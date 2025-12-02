@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # RabbitMQ服务（用于Celery）
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+  # Django应用服务
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+    environment:
+      - DJANGO_SETTINGS_MODULE=SkillSpace.settings
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    env_file:
+      - .env
+
+  # MySQL数据库服务
+  db:
+    image: mysql:8.0
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=${DB_NAME:-skillspace}
+      - MYSQL_USER=${DB_USER:-admin}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-password}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  # Redis服务（用于Celery）
+  redis:
+    image: redis:6.2
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  # Celery Worker服务
+  celery_worker:
+    build: .
+    command: celery -A SkillSpace worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+      - rabbitmq
+    environment:
+      - DJANGO_SETTINGS_MODULE=SkillSpace.settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=db
+      - DB_PORT=3306
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    env_file:
+      - .env
+
+  # Celery Beat服务（用于定时任务）
+  celery_beat:
+    build: .
+    command: celery -A SkillSpace beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    environment:
+      - DJANGO_SETTINGS_MODULE=SkillSpace.settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env
+
+volumes:
+  mysql_data:
+  redis_data:

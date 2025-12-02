@@ -1,0 +1,47 @@
+/* CSS变量定义 */
+:root {
+  /* 颜色系统 */
+  --color-primary: #646cff;
+  --color-primary-hover: #535bf2;
+  --color-primary-light: #747bff;
+  
+  --color-secondary: #1e3c72;
+  --color-secondary-gradient: #2a5298;
+  
+  --color-accent: #6a11cb;
+  --color-accent-gradient: #2575fc;
+  
+  --color-text-primary: #213547;
+  --color-text-secondary: #888;
+  --color-text-inverse: rgba(255, 255, 255, 0.87);
+  
+  --color-background-light: #ffffff;
+  --color-background-dark: #242424;
+  --color-background-card: rgba(255, 255, 255, 0.95);
+  
+  --color-border: #e2e8f0;
+  --color-border-focus: #6a11cb;
+  
+  /* 间距系统 */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 24px;
+  
+  /* 阴影 */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 15px rgba(106, 17, 203, 0.4);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.3);
+  
+  /* 过渡 */
+  --transition-fast: 0.2s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.4s ease;
+}

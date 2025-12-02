@@ -1,0 +1,219 @@
+# ================= 通用忽略项 =================
+# 操作系统生成文件
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux备份文件
+*~
+*.swp
+*.swo
+*.swn
+
+# IDE/编辑器配置
+.idea/
+.vscode/
+.trae/
+.qoder/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# 日志文件
+logs/
+tmp/
+temp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 环境变量文件（敏感信息，绝不提交）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+
+# ================= Python/Django后端忽略项 =================
+# Python字节码文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+
+# 虚拟环境
+venv/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+backend/env/
+backend/.venv/
+
+# Django特定文件
+*.log
+*.pot
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+*.db
+backend/db.sqlite3
+backend/db.sqlite3-journal
+
+# Django静态文件（收集后的）
+static/
+staticfiles/
+backend/static/
+backend/staticfiles/
+
+# Django媒体文件（用户上传）
+media/
+backend/media/
+
+# Django迁移备份
+migrations/backup/
+backend/migrations/backup/
+
+# 测试覆盖率报告
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+backend/htmlcov/
+backend/.coverage
+
+# Celery相关
+celerybeat-schedule
+celerybeat.pid
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# ================= Node.js/Vite前端忽略项 =================
+# 依赖包（npm/yarn/pnpm）
+node_modules/
+frontend/node_modules/
+frontend/skillspace/node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+build/
+frontend/dist/
+frontend/build/
+frontend/skillspace/dist/
+frontend/skillspace/dist-ssr/
+
+# Vite缓存
+.vite/
+node_modules/.vite/
+frontend/node_modules/.vite/
+frontend/skillspace/node_modules/.vite/
+
+# 前端测试报告
+coverage/
+frontend/coverage/
+frontend/skillspace/coverage/
+
+# 前端环境变量
+*.local
+
+# TypeScript缓存
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# 包管理锁文件（可选：如果团队统一包版本，可取消忽略）
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ================= Docker相关 =================
+# Docker compose覆盖文件
+docker-compose.override.yml
+
+# ================= 其他工具配置 =================
+# Git冲突标记文件
+*.orig
+
+# Backup files
+*.bak
+*.backup
+
+# Qoder IDE（当前项目使用）
+.qoder/
+.trae/
