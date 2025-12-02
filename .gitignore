@@ -73,6 +73,7 @@ build/
 *.spec
 
 # 虚拟环境
+sk_venv/
 venv/
 env/
 .venv/
