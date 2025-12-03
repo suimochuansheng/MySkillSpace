@@ -48,6 +48,10 @@
               <el-icon><DataAnalysis /></el-icon>
               <span>数据分析</span>
             </el-menu-item>
+            <el-menu-item index="ai">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>AI助手</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -69,7 +73,7 @@
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Document, List, DataAnalysis, User, SwitchButton } from '@element-plus/icons-vue';
+import { Document, List, DataAnalysis, User, SwitchButton, ChatDotRound } from '@element-plus/icons-vue';
 import { authAPI } from '@/api';
 
 // 导入模块组件
@@ -77,6 +81,7 @@ import ResumeModule from './modules/ResumeModule.vue';
 import TasksModule from './modules/TasksModule.vue';
 import AnalyticsModule from './modules/AnalyticsModule.vue';
 import ProfileModule from './modules/ProfileModule.vue';
+import AiModule from './modules/AiModule.vue';
 
 // 当前激活的模块
 const activeModule = ref('resume');
@@ -101,6 +106,10 @@ const moduleConfig = {
   analytics: {
     title: '数据分析',
     component: AnalyticsModule
+  },
+  ai: {
+    title: 'AI助手',
+    component: AiModule
   },
   profile: {
     title: '个人信息',

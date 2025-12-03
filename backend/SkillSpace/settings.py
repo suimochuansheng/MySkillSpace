@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'tasks_hub',
     'resume',
     'auth_system',  # 用户认证系统
+    'ai_demo', # 人工智能Demo
 ]
 
 MIDDLEWARE = [

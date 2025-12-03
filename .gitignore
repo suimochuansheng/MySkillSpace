@@ -39,6 +39,7 @@ $RECYCLE.BIN/
 *.launch
 .settings/
 *.sublime-workspace
+*.sublime-project
 
 # 日志文件
 logs/
@@ -58,6 +59,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.backup
+*.env
 
 # ================= Python/Django后端忽略项 =================
 # Python字节码文件
@@ -202,6 +204,24 @@ frontend/skillspace/coverage/
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# ================= AI模型相关 =================
+# AI模型缓存目录（Qwen模型文件大，不提交）
+backend/qwen_model_cache/
+qwen_model_cache/
+*.pth
+*.bin
+*.safetensors
+checkpoint-*/
+model_cache/
+
+# Hugging Face缓存
+.cache/huggingface/
+~/.cache/huggingface/
+
+# ModelScope缓存
+.cache/modelscope/
+~/.cache/modelscope/
 
 # ================= Docker相关 =================
 # Docker compose覆盖文件

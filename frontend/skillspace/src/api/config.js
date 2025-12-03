@@ -30,7 +30,8 @@ export const API_ENDPOINTS = {
 };
 
 // HTTP请求超时时间（毫秒）
-export const REQUEST_TIMEOUT = 10000;
+// ✅ 修复点5：AI推理需要较长时间，增加超时时间到2分钟
+export const REQUEST_TIMEOUT = 120000;  // 120秒 = 2分钟（原为10秒）
 
 // 请求头配置
 export const DEFAULT_HEADERS = {

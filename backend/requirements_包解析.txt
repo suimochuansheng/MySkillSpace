@@ -1,0 +1,205 @@
+# ========================================
+# SkillSpace Python 3.9 兼容依赖配置
+# 适配Qwen-7B-Chat大语言模型部署
+# 更新日期：2025年
+# ========================================
+
+# ========== Web框架核心包 ==========
+Django==4.2.27  # Django Web框架，提供MVC架构和ORM
+django-cors-headers==4.9.0  # Django CORS跨域资源共享中间件
+django-simpleui==2025.5.262  # Django Admin界面美化插件
+djangorestframework==3.16.1  # Django REST Framework，构建RESTful API
+
+# ========== ASGI/WSGI服务器 ==========
+asgiref==3.11.0  # ASGI规范参考实现，Django异步支持基础
+
+# ========== 数据库相关 ==========
+PyMySQL==1.1.2  # 纯Python实现的MySQL数据库驱动
+sqlparse==0.5.3  # SQL解析器，Django用于格式化SQL语句
+
+# ========== 异步任务队列（Celery生态）==========
+celery==5.5.3  # 分布式异步任务队列框架
+amqp==5.3.1  # AMQP协议纯Python实现
+billiard==4.2.3  # Celery使用的多进程池库
+kombu==5.5.4  # Celery消息传递库，支持多种消息代理
+vine==5.1.0  # Celery异步回调框架
+redis==5.0.1  # Redis Python客户端，用于Celery broker和result backend
+
+# ========== AI/机器学习核心库 ==========
+# PyTorch深度学习框架（CUDA 11.8版本，适配Python 3.9）
+torch==2.1.2  # PyTorch核心库，深度学习框架
+torchaudio==2.1.2  # PyTorch音频处理库
+torchvision==0.16.2  # PyTorch计算机视觉库
+
+# Transformers和预训练模型
+transformers==4.36.2  # Hugging Face Transformers，预训练模型库（支持Qwen）
+tokenizers==0.15.0  # 高性能分词器库
+sentencepiece==0.1.99  # Google分词工具，支持多语言
+safetensors==0.4.1  # 安全的张量序列化格式
+
+# 模型加速和优化
+accelerate==0.26.1  # Hugging Face模型训练加速库
+bitsandbytes==0.41.3  # 8bit量化优化库，降低显存占用
+peft==0.10.0  # 参数高效微调库（LoRA等）
+einops==0.8.1  # 张量操作简化库
+
+# ========== Hugging Face生态 ==========
+huggingface-hub==0.20.3  # Hugging Face模型中心客户端
+datasets==4.4.1  # Hugging Face数据集库
+
+# ========== ModelScope（魔搭社区）==========
+modelscope==1.11.0  # 阿里魔搭模型社区SDK
+addict==2.4.0  # ModelScope依赖：字典对象增强库
+simplejson==3.20.2  # ModelScope依赖：高性能JSON库
+sortedcontainers==2.4.0  # ModelScope依赖：有序容器库
+
+# ========== 阿里云SDK ==========
+aliyun-python-sdk-core==2.16.0  # 阿里云Python SDK核心库
+aliyun-python-sdk-kms==2.16.5  # 阿里云密钥管理服务SDK
+oss2==2.19.1  # 阿里云对象存储OSS SDK
+crcmod==1.7  # OSS依赖：CRC校验库
+jmespath==0.10.0  # 阿里云SDK依赖：JSON查询语言
+pycryptodome==3.23.0  # 阿里云SDK依赖：加密库
+
+# ========== 科学计算和数据处理 ==========
+numpy==1.24.4  # 数组计算库，Python 3.9兼容版本
+scipy==1.13.1  # 科学计算库
+pandas==2.3.3  # 数据分析和处理库
+pyarrow==21.0.0  # Apache Arrow Python绑定，高性能数据交换
+
+# ========== 图像处理 ==========
+pillow==10.2.0  # Python图像处理库（PIL分支）
+
+# ========== HTTP客户端和异步网络 ==========
+requests==2.32.5  # 简单易用的HTTP库
+urllib3==2.5.0  # HTTP客户端库，requests底层依赖
+certifi==2024.2.2  # Mozilla CA证书集合
+charset-normalizer==3.3.2  # 字符编码检测库
+idna==3.6  # 国际化域名支持
+
+# 异步HTTP客户端
+aiohttp==3.13.2  # 异步HTTP客户端/服务器框架
+aiohappyeyeballs==2.6.1  # aiohttp依赖：快速DNS解析
+aiosignal==1.4.0  # aiohttp依赖：异步信号处理
+async-timeout==5.0.1  # aiohttp依赖：异步超时控制
+attrs==25.4.0  # aiohttp依赖：类装饰器库
+frozenlist==1.8.0  # aiohttp依赖：不可变列表
+multidict==6.7.0  # aiohttp依赖：多值字典
+propcache==0.4.1  # aiohttp依赖：属性缓存
+anyio==4.12.0  # 异步IO抽象层
+
+# httpx现代异步HTTP客户端
+httpx==0.28.1  # 现代异步HTTP客户端
+httpcore==1.0.9  # httpx核心库
+h11==0.16.0  # HTTP/1.1协议实现
+
+# ========== 加密和安全 ==========
+cryptography==46.0.3  # 加密库，提供各种加密算法
+cffi==2.0.0  # C语言外部函数接口
+pycparser==2.21  # C语言解析器，cffi依赖
+
+# ========== 命令行工具 ==========
+click==8.1.8  # 命令行接口创建工具
+click-didyoumean==0.3.1  # Click插件：命令拼写建议
+click-plugins==1.1.1.2  # Click插件系统
+click-repl==0.3.0  # Click插件：交互式REPL
+prompt_toolkit==3.0.52  # 交互式命令行工具库
+wcwidth==0.2.14  # 终端字符宽度计算
+colorama==0.4.6  # 跨平台终端颜色输出
+
+# ========== 进度条和日志 ==========
+tqdm==4.66.1  # 进度条显示库
+
+# ========== 文件系统和路径 ==========
+filelock==3.13.1  # 文件锁机制
+fsspec==2024.2.0  # 文件系统规范抽象层
+platformdirs==4.4.0  # 跨平台目录路径获取
+
+# ========== 配置和环境变量 ==========
+python-dotenv==1.2.1  # .env文件加载库
+PyYAML==6.0.1  # YAML解析器
+tomli==2.3.0  # TOML解析器（Python 3.11之前需要）
+
+# ========== 模板引擎 ==========
+Jinja2==3.1.3  # 模板引擎
+MarkupSafe==2.1.5  # Jinja2依赖：安全字符串标记
+
+# ========== 日期时间处理 ==========
+python-dateutil==2.9.0.post0  # 日期时间扩展库
+pytz==2025.2  # 时区数据库
+tzdata==2025.2  # IANA时区数据库
+
+# ========== 多进程和并发 ==========
+multiprocess==0.70.18  # 多进程库增强版
+psutil==5.9.8  # 系统和进程监控库
+
+# ========== 序列化和数据处理 ==========
+dill==0.4.0  # 扩展的pickle序列化库
+
+# ========== 数学和符号计算 ==========
+sympy==1.12  # 符号数学库
+mpmath==1.3.0  # 多精度浮点运算库
+
+# ========== 图论和网络 ==========
+networkx==3.1  # 复杂网络分析库（Python 3.9兼容）
+
+# ========== 正则表达式和文本处理 ==========
+regex==2023.12.25  # 增强正则表达式库
+
+# ========== 哈希算法 ==========
+xxhash==3.6.0  # 极速哈希算法库
+
+# ========== NVIDIA GPU监控 ==========
+nvidia-ml-py3==7.352.0  # NVIDIA管理库Python绑定，GPU监控
+
+# ========== 代码格式化 ==========
+yapf==0.43.0  # Google Python代码格式化工具
+
+# ========== 类型检查和工具 ==========
+typing_extensions==4.9.0  # 类型提示扩展库
+exceptiongroup==1.3.1  # 异常组支持（Python 3.11回溯移植）
+
+# ========== 打包和分发 ==========
+packaging==23.2  # 包版本解析和比较
+setuptools==69.0.3  # Python包安装工具
+
+# ========== 其他工具库 ==========
+six==1.17.0  # Python 2和3兼容性库
+gast==0.7.0  # Python AST抽象语法树工具
+
+# ========================================
+# 安装说明：
+# ========================================
+# 
+# 1. 安装PyTorch（根据CUDA版本选择）
+#    
+#    方式A - CUDA 11.8（推荐，有NVIDIA GPU）：
+#    pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+#    
+#    方式B - CPU版本（无GPU或测试环境）：
+#    pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cpu
+#    
+#    方式C - CUDA 12.1（较新GPU）：
+#    pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
+# 
+# 2. 安装其他依赖：
+#    pip install -r requirements_py39.txt
+# 
+# 3. 验证安装：
+#    python -c "import django; print('Django:', django.__version__)"
+#    python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA可用:', torch.cuda.is_available())"
+#    python -c "from transformers import AutoTokenizer; print('Transformers: OK')"
+#    python -c "import celery; print('Celery:', celery.__version__)"
+# 
+# 4. 环境要求：
+#    - Python: 3.9.x
+#    - 推荐：Python 3.9.13 或更高版本
+#    - 操作系统：Windows 10/11, Ubuntu 18.04+, macOS 10.15+
+#    - 内存：至少16GB RAM（运行Qwen-7B需要）
+#    - 显存：至少12GB VRAM（GPU加速推荐）
+# 
+# 5. 使用国内镜像加速（可选）：
+#    pip install -r requirements_py39.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 
+# ========================================
+

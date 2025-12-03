@@ -7,6 +7,9 @@
 // 导出认证API
 export * as authAPI from './auth';
 
+// 导出AI模块API
+export * as aiAPI from './ai';
+
 // 导出HTTP客户端（用于自定义请求）
 export { default as http } from './http';
 
