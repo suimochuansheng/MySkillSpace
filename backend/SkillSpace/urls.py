@@ -25,4 +25,6 @@ urlpatterns = [
     path('api/', include('resume.urls')),
     # 用户认证接口
     path('api/auth/', include('auth_system.urls')),
+    # ai 模型接口
+    path('api/ai/', include('ai_demo.urls')), # 人工智能模型接口
 ]

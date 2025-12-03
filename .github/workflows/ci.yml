@@ -34,8 +34,8 @@ on:
 # 环境变量（全局）
 # ========================================
 env:
-  # Python版本（与项目requirements.txt兼容）
-  PYTHON_VERSION: '3.12'
+  # Python版本（适配Qwen-7B-Chat大语言模型部署需求）
+  PYTHON_VERSION: '3.9'
   
   # Node.js版本（使用LTS版本，package.json未指定engines）
   NODE_VERSION: '20'
