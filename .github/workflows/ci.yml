@@ -149,13 +149,20 @@ jobs:
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
       
-      # 步骤3：安装Python依赖
+# 步骤3：安装Python依赖
       - name: 📦 安装后端依赖
         run: |
           echo "升级pip到最新版本..."
           python -m pip install --upgrade pip
           
+          echo "🔧 正在适配 CI 环境..."
+          # 【关键修改】使用 sed 动态移除 +cu124 后缀
+          # 原因：CI环境是CPU环境，且标准PyPI源没有+cu124版本
+          # 这会将 torch==2.4.1+cu124 临时改为 torch==2.4.1
+          sed -i 's/+cu124//g' requirements.txt
+          
           echo "开始安装Django、DRF等后端依赖..."
+          # 使用默认源安装（此时已变成标准CPU版本，速度快且能成功）
           pip install -r requirements.txt
           
           echo "✅ 后端依赖安装完成"
