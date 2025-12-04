@@ -16,11 +16,13 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-# Linux备份文件
+# Linux/Unix备份文件
 *~
 *.swp
 *.swo
 *.swn
+.*.swp
+.*.swo
 
 # IDE/编辑器配置
 .idea/
@@ -40,6 +42,7 @@ $RECYCLE.BIN/
 .settings/
 *.sublime-workspace
 *.sublime-project
+.vscode-test/
 
 # 日志文件
 logs/
@@ -51,15 +54,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+pip-log.txt
 
 # 环境变量文件（敏感信息，绝不提交）
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env.backup
-*.env
 
 # ================= Python/Django后端忽略项 =================
 # Python字节码文件
@@ -73,6 +78,8 @@ dist/
 build/
 *.manifest
 *.spec
+wheels/
+pip-wheel-metadata/
 
 # 虚拟环境
 backend/sk_venv/
@@ -86,6 +93,7 @@ venv.bak/
 backend/venv/
 backend/env/
 backend/.venv/
+pyvenv.cfg
 
 # Django特定文件
 *.log
@@ -102,12 +110,13 @@ static/
 staticfiles/
 backend/static/
 backend/staticfiles/
+!backend/SkillSpace/myapps/*/static/
 
 # Django媒体文件（用户上传）
 media/
 backend/media/
 
-# Django迁移备份
+# Django迁移备份（保留正式迁移文件）
 migrations/backup/
 backend/migrations/backup/
 
@@ -126,13 +135,21 @@ coverage.xml
 .pytest_cache/
 backend/htmlcov/
 backend/.coverage
+test-results/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
 
 # Celery相关
 celerybeat-schedule
+celerybeat-schedule.db
 celerybeat.pid
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
 # pyenv
 .python-version
@@ -143,11 +160,16 @@ Pipfile.lock
 # poetry
 poetry.lock
 
+# pdm
+.pdm.toml
+__pypackages__/
+
 # ================= Node.js/Vite前端忽略项 =================
 # 依赖包（npm/yarn/pnpm）
 node_modules/
 frontend/node_modules/
 frontend/skillspace/node_modules/
+jspm_packages/
 
 # 构建产物
 dist/
@@ -157,31 +179,35 @@ frontend/dist/
 frontend/build/
 frontend/skillspace/dist/
 frontend/skillspace/dist-ssr/
+out/
 
 # Vite缓存
 .vite/
 node_modules/.vite/
 frontend/node_modules/.vite/
 frontend/skillspace/node_modules/.vite/
+.vite-cache/
 
 # 前端测试报告
 coverage/
 frontend/coverage/
 frontend/skillspace/coverage/
+.nyc_output/
 
 # 前端环境变量
 *.local
 
 # TypeScript缓存
 *.tsbuildinfo
+next-env.d.ts
 
-# Optional npm cache directory
+# npm缓存
 .npm
 
-# Optional eslint cache
+# eslint缓存
 .eslintcache
 
-# Optional stylelint cache
+# stylelint缓存
 .stylelintcache
 
 # Microbundle cache
@@ -190,50 +216,78 @@ frontend/skillspace/coverage/
 .rts2_cache_es/
 .rts2_cache_umd/
 
-# Optional REPL history
+# REPL历史
 .node_repl_history
 
-# yarn v2
+# yarn v2+
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
 
-# 包管理锁文件（可选：如果团队统一包版本，可取消忽略）
+# Turbo
+.turbo/
+
+# 包管理锁文件（建议保留以确保版本一致性）
+# 如需忽略，取消下方注释
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
-
-# ================= AI模型相关 =================
-# AI模型缓存目录（Qwen模型文件大，不提交）
-backend/qwen_model_cache/
-qwen_model_cache/
-*.pth
-*.bin
-*.safetensors
-checkpoint-*/
-model_cache/
-
-# Hugging Face缓存
-.cache/huggingface/
-~/.cache/huggingface/
-
-# ModelScope缓存
-.cache/modelscope/
-~/.cache/modelscope/
 
 # ================= Docker相关 =================
 # Docker compose覆盖文件
 docker-compose.override.yml
 
+# ================= AI/机器学习模型相关 =================
+# 模型缓存目录（Qwen等大模型文件，体积巨大）
+backend/qwen_model_cache/
+*.safetensors
+*.bin
+*.onnx
+*.pt
+*.pth
+*.h5
+*.pb
+*.ckpt
+checkpoints/
+model_cache/
+huggingface_cache/
+.cache/huggingface/
+.cache/torch/
+
+# 排除示例配置和README
+!backend/qwen_model_cache/**/README.md
+!backend/qwen_model_cache/**/config.json
+!backend/qwen_model_cache/**/configuration*.py
+!backend/qwen_model_cache/**/tokenizer_config.json
+!backend/qwen_model_cache/**/generation_config.json
+
+# 训练相关
+runs/
+experiments/
+tensorboard/
+wandb/
+
 # ================= 其他工具配置 =================
 # Git冲突标记文件
 *.orig
+*.rej
 
-# Backup files
+# 备份文件
 *.bak
 *.backup
+*.tmp
+
+# 压缩文件（避免误提交大文件）
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 文档临时文件
+~$*
+*.tmp
 
 # Qoder IDE（当前项目使用）
 .qoder/

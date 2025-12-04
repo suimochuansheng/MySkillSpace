@@ -19,7 +19,7 @@ app_name = 'auth_system'
 urlpatterns = [
     # 用户注册
     # POST /api/auth/register/
-    path('register/', UserRegistrationView.as_view(), name='register'),
+    # path('register/', UserRegistrationView.as_view(), name='register'),
     
     # 用户登录
     # POST /api/auth/login/
@@ -31,13 +31,14 @@ urlpatterns = [
     
     # 获取当前用户信息
     # GET /api/auth/me/
-    path('me/', CurrentUserView.as_view(), name='current-user'),
+    # path('me/', CurrentUserView.as_view(), name='current-user'),
     
     # 修改密码
     # POST /api/auth/password/change/
-    path('password/change/', PasswordChangeView.as_view(), name='password-change'),
+    # path('password/change/', PasswordChangeView.as_view(), name='password-change'),
     
     # 检查邮箱是否可用
     # POST /api/auth/check-email/
-    path('check-email/', CheckEmailView.as_view(), name='check-email'),
+    # path('check-email/', CheckEmailView.as_view(), name='check-email'),
 ]
+                                       
