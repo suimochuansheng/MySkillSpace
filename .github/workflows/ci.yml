@@ -40,9 +40,7 @@ jobs:
 
       - name: 📦 安装并构建
         run: |
-          # 快速安装依赖
           npm ci --prefer-offline --no-audit
-          # 尝试构建生产版本
           npm run build
 
   # ============================
@@ -69,10 +67,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           
-          # 1. 简易编码修复 (防止 Windows UTF-16 报错)
-          python -c "try: c=open('requirements.txt','r',encoding='utf-16').read(); open('requirements.txt','w',encoding='utf-8').write(c); print('✅ UTF-16转UTF-8成功'); except: pass"
+          # 1. 简易编码修复 (使用多行模式，避免语法报错)
+          python << 'EOF'
+          try:
+              # 尝试读取 UTF-16 (Windows)
+              content = open('requirements.txt', 'r', encoding='utf-16').read()
+              # 写入 UTF-8
+              open('requirements.txt', 'w', encoding='utf-8').write(content)
+              print('✅ UTF-16 -> UTF-8 转换成功')
+          except UnicodeError:
+              # 如果不是 UTF-16，说明已经是 UTF-8 或其他，不做处理
+              print('ℹ️ 文件无需转换 (非 UTF-16)')
+          except Exception as e:
+              # 即使出错也不要中断 CI，继续尝试后续步骤
+              print(f'⚠️ 编码检查跳过: {e}')
+          EOF
 
-          # 2. 过滤掉 PyTorch (节省 3-5 分钟下载时间)
+          # 2. 过滤掉 PyTorch (节省下载时间)
           # 注意：如果你的代码 import torch 会报错，请注释掉下面这行 grep
           grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.lite.txt
 
@@ -94,5 +105,4 @@ jobs:
           python manage.py check
           
           echo "🧪 运行单元测试 (SQLite)..."
-          # 使用内存数据库，速度极快
           python manage.py test
