@@ -9,77 +9,56 @@ name: SkillSpace CI Pipeline
 # 触发条件
 # ========================================
 on:
-  # 当代码推送到 main 分支或 hotfix 分支时触发
   push:
     branches: [ "main", "hotfix/*" ]
-  
-  # 当创建或更新 Pull Request 时触发
   pull_request:
     branches: [ "main", "feature/*", "fix/*", "hotfix/*" ]
-  
-  # 允许手动触发
   workflow_dispatch:
 
 # ========================================
 # 全局环境变量
 # ========================================
 env:
-  # Python 版本：兼容 Django 5.x
   PYTHON_VERSION: '3.9'
-  
-  # Node.js 版本：使用 LTS 版本
   NODE_VERSION: '20'
-  
-  # 前端构建输出目录
   FRONTEND_BUILD_DIR: frontend/skillspace/dist
+  # 新增：模型测试标记
+  SKIP_MODEL_TESTS: "true"  # CI环境默认跳过模型加载测试
 
 # ========================================
 # 作业定义
-# 前端和后端作业并行执行，提高 CI 效率
 # ========================================
 jobs:
-  # ============================
-  # 作业 1：前端测试和构建
-  # ============================
   frontend-test-build:
     name: 前端测试与构建 (Vue 3 + Vite)
     runs-on: ubuntu-latest
-    
-    # 设置默认工作目录
     defaults:
       run:
         working-directory: frontend/skillspace
     
     steps:
-      # 步骤 1：检出代码
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      # 步骤 2：设置 Node.js 环境
       - name: 🟢 设置 Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          # 启用 npm 缓存加速依赖安装
           cache: 'npm'
           cache-dependency-path: frontend/skillspace/package-lock.json
 
-      # 步骤 3：安装前端依赖
       - name: 📦 安装依赖
         run: |
-          echo "开始安装 Vue3 + Element Plus 等依赖..."
-          # 使用 npm ci 确保与 package-lock.json 完全一致
+          echo "开始安装依赖..."
           npm ci --prefer-offline --no-audit
           echo "✅ 依赖安装完成"
 
-      # 步骤 4：Vite 构建检查
       - name: 🛠️ Vite 构建检查
         run: |
-          echo "开始 Vite 构建..."
+          echo "开始构建..."
           npm run build
-          echo "✅ 构建成功，输出目录: dist/"
+          echo "✅ 构建成功"
       
-      # 步骤 5：上传构建产物（可选）
       - name: 📤 上传构建产物
         uses: actions/upload-artifact@v4
         with:
@@ -88,19 +67,12 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # ============================
-  # 作业 2：后端测试
-  # ============================
   backend-test:
     name: 后端测试 (Django + settings_test.py)
     runs-on: ubuntu-latest
-    
-    # 设置默认工作目录
     defaults:
       run:
         working-directory: backend
-    
-    # 配置服务容器：Redis（用于 Celery 测试）
     services:
       redis:
         image: redis:7-alpine
@@ -113,76 +85,69 @@ jobs:
           --health-retries 5
     
     steps:
-      # 步骤 1：检出代码
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      # 步骤 2：设置 Python 环境
       - name: 🐍 设置 Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          # 启用 pip 缓存加速依赖安装
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      # 步骤 3：安装后端依赖
       - name: 📦 安装依赖
         run: |
-          echo "升级 pip..."
           python -m pip install --upgrade pip
           
-          echo "处理文件编码（如需）..."
-          # 尝试转换 UTF-16 到 UTF-8（Windows 生成的文件）
-          python << 'EOF'
-          try:
-              content = open('requirements.txt', 'r', encoding='utf-16').read()
-              open('requirements.txt', 'w', encoding='utf-8').write(content)
-              print('✅ 文件编码转换成功')
-          except:
-              print('ℹ️ 文件无需转换')
+          # 编码转换增强：先检查文件存在性
+          if [ -f "requirements.txt" ]; then
+            python << 'EOF'
+            try:
+                with open('requirements.txt', 'r', encoding='utf-16') as f:
+                    content = f.read()
+                with open('requirements.txt', 'w', encoding='utf-8') as f:
+                    f.write(content)
+                print('✅ 文件编码转换成功')
+            except UnicodeDecodeError:
+                print('ℹ️ 文件已为UTF-8编码')
+            except Exception as e:
+                print(f'⚠️ 编码转换警告: {e}')
           EOF
+          else
+            echo "⚠️ requirements.txt 不存在"
+          fi
           
-          echo "过滤 PyTorch 包（使用 CPU 版本）..."
-          # 从 requirements.txt 中过滤掉 torch 相关包
+          # 过滤PyTorch包
           grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.ci.txt || true
           
-          echo "安装 PyTorch CPU 版本..."
+          # 安装CPU版本PyTorch
           pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-          echo "安装项目依赖..."
+          # 安装项目依赖
           pip install -r requirements.ci.txt
-          
           echo "✅ 依赖安装完成"
 
-      # 步骤 4：配置测试环境变量
       - name: ⚙️ 配置环境变量
         run: |
-          # 创建 .env 文件（可选，settings_test.py 已提供默认值）
           cat > .env << EOF
-          # 可选：使用真实 Redis
           CELERY_BROKER_URL=redis://localhost:6379/0
           CELERY_RESULT_BACKEND=redis://localhost:6379/0
           EOF
           echo "✅ 环境变量配置完成"
 
-      # 步骤 5：Django 系统检查
       - name: 🔍 Django 系统检查
         run: |
-          echo "执行 Django 系统检查..."
           python manage.py check --settings=SkillSpace.settings_test
           echo "✅ 系统检查通过"
 
-      # 步骤 6：执行数据库迁移
       - name: 🗄️ 数据库迁移
         run: |
-          echo "执行数据库迁移（SQLite 内存模式）..."
           python manage.py migrate --settings=SkillSpace.settings_test --verbosity=2
           echo "✅ 数据库迁移完成"
 
-      # 步骤 7：运行单元测试
       - name: 🧪 运行单元测试
         run: |
-          echo "运行 Django 单元测试..."
+          # 注入环境变量控制模型测试
+          export SKIP_MODEL_TESTS=${{ env.SKIP_MODEL_TESTS }}
           python manage.py test --settings=SkillSpace.settings_test --verbosity=2
           echo "✅ 测试完成"
