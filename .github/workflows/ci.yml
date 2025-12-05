@@ -49,7 +49,7 @@ jobs:
 
             # === 添加这一行来验证 ===
       - name: 🚩 身份验证
-        run: echo "我是新版本的CI文件！！！版本号 v2.0.4--text"
+        run: echo "我是新版本的CI文件！！！版本号 v2.0.--text"
 
       - name: 🟢 设置 Node.js
         uses: actions/setup-node@v4
@@ -155,7 +155,7 @@ jobs:
           
           echo "🔧 精准剔除 requirements.txt 中的 Torch 相关包声明..."
           # 只删除 torch/torchvision/torchaudio 包声明行，不影响其他依赖
-          grep -a-text-Ev "^(torch|torchvision|torchaudio)($|=|>|<|~)" requirements.txt > requirements.ci.txt
+          grep --text -Ev "^(torch|torchvision|torchaudio)($|=|>|<|~)" requirements.txt > requirements.ci.txt
           
           # 验证过滤结果（可选，方便调试）
           echo "📄 过滤后的 requirements.ci.txt 内容："
