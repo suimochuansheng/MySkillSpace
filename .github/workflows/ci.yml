@@ -1,108 +1,188 @@
 # ========================================
-# SkillSpace 轻量级 CI (Lite Version)
-# 目标：快速验证构建和基本逻辑，不浪费时间
+# SkillSpace 项目 CI/CD 配置
+# 目标：建立稳定可靠的基础测试流程
 # ========================================
 
-name: SkillSpace Lite CI
+name: SkillSpace CI Pipeline
 
+# ========================================
+# 触发条件
+# ========================================
 on:
+  # 当代码推送到 main 分支或 hotfix 分支时触发
   push:
     branches: [ "main", "hotfix/*" ]
+  
+  # 当创建或更新 Pull Request 时触发
   pull_request:
-    branches: [ "main", "feature/*" ]
+    branches: [ "main", "feature/*", "fix/*", "hotfix/*" ]
+  
+  # 允许手动触发
   workflow_dispatch:
 
+# ========================================
+# 全局环境变量
+# ========================================
 env:
+  # Python 版本：兼容 Django 5.x
   PYTHON_VERSION: '3.9'
+  
+  # Node.js 版本：使用 LTS 版本
   NODE_VERSION: '20'
+  
+  # 前端构建输出目录
+  FRONTEND_BUILD_DIR: frontend/skillspace/dist
 
+# ========================================
+# 作业定义
+# 前端和后端作业并行执行，提高 CI 效率
+# ========================================
 jobs:
   # ============================
-  # 任务1：前端构建检查
+  # 作业 1：前端测试和构建
   # ============================
-  frontend-build:
-    name: 前端构建 (Vue 3)
+  frontend-test-build:
+    name: 前端测试与构建 (Vue 3 + Vite)
     runs-on: ubuntu-latest
+    
+    # 设置默认工作目录
     defaults:
       run:
         working-directory: frontend/skillspace
     
     steps:
+      # 步骤 1：检出代码
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: 🟢 设置 Node.js
+      # 步骤 2：设置 Node.js 环境
+      - name: 🟢 设置 Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          # 启用 npm 缓存加速依赖安装
           cache: 'npm'
           cache-dependency-path: frontend/skillspace/package-lock.json
 
-      - name: 📦 安装并构建
+      # 步骤 3：安装前端依赖
+      - name: 📦 安装依赖
         run: |
+          echo "开始安装 Vue3 + Element Plus 等依赖..."
+          # 使用 npm ci 确保与 package-lock.json 完全一致
           npm ci --prefer-offline --no-audit
+          echo "✅ 依赖安装完成"
+
+      # 步骤 4：Vite 构建检查
+      - name: 🛠️ Vite 构建检查
+        run: |
+          echo "开始 Vite 构建..."
           npm run build
+          echo "✅ 构建成功，输出目录: dist/"
+      
+      # 步骤 5：上传构建产物（可选）
+      - name: 📤 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ${{ env.FRONTEND_BUILD_DIR }}
+          retention-days: 7
+          if-no-files-found: error
 
   # ============================
-  # 任务2：后端代码检查
+  # 作业 2：后端测试
   # ============================
-  backend-check:
-    name: 后端检查 (SQLite)
+  backend-test:
+    name: 后端测试 (Django + settings_test.py)
     runs-on: ubuntu-latest
+    
+    # 设置默认工作目录
     defaults:
       run:
         working-directory: backend
     
+    # 配置服务容器：Redis（用于 Celery 测试）
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
+      # 步骤 1：检出代码
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: 🐍 设置 Python
+      # 步骤 2：设置 Python 环境
+      - name: 🐍 设置 Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          # 启用 pip 缓存加速依赖安装
           cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
 
-      - name: 📦 安装轻量依赖
+      # 步骤 3：安装后端依赖
+      - name: 📦 安装依赖
         run: |
+          echo "升级 pip..."
           python -m pip install --upgrade pip
           
-          # 1. 简易编码修复 (使用多行模式，避免语法报错)
+          echo "处理文件编码（如需）..."
+          # 尝试转换 UTF-16 到 UTF-8（Windows 生成的文件）
           python << 'EOF'
           try:
-              # 尝试读取 UTF-16 (Windows)
               content = open('requirements.txt', 'r', encoding='utf-16').read()
-              # 写入 UTF-8
               open('requirements.txt', 'w', encoding='utf-8').write(content)
-              print('✅ UTF-16 -> UTF-8 转换成功')
-          except UnicodeError:
-              # 如果不是 UTF-16，说明已经是 UTF-8 或其他，不做处理
-              print('ℹ️ 文件无需转换 (非 UTF-16)')
-          except Exception as e:
-              # 即使出错也不要中断 CI，继续尝试后续步骤
-              print(f'⚠️ 编码检查跳过: {e}')
+              print('✅ 文件编码转换成功')
+          except:
+              print('ℹ️ 文件无需转换')
           EOF
-
-          # 2. 过滤掉 PyTorch (节省下载时间)
-          # 注意：如果你的代码 import torch 会报错，请注释掉下面这行 grep
-          grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.lite.txt
-
-          # 3. 安装业务依赖
-          pip install -r requirements.lite.txt
           
-          # 4. 补充安装 pymysql (防止 settings.py 报错)
-          pip install pymysql
+          echo "过滤 PyTorch 包（使用 CPU 版本）..."
+          # 从 requirements.txt 中过滤掉 torch 相关包
+          grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.ci.txt || true
+          
+          echo "安装 PyTorch CPU 版本..."
+          pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+          
+          echo "安装项目依赖..."
+          pip install -r requirements.ci.txt
+          
+          echo "✅ 依赖安装完成"
 
-      - name: 🧪 运行快速检查
+      # 步骤 4：配置测试环境变量
+      - name: ⚙️ 配置环境变量
         run: |
-          # 临时注入 pymysql 驱动 (防止 Django 启动报错)
-          sed -i '1i import pymysql\npymysql.install_as_MySQLdb()' SkillSpace/settings.py
-          
-          # 设置基本密钥 (不设置 DB 变量，默认使用 SQLite)
-          export SECRET_KEY='ci-lite-test-key'
-          
-          echo "🔍 检查代码配置..."
-          python manage.py check
-          
-          echo "🧪 运行单元测试 (SQLite)..."
-          python manage.py test
+          # 创建 .env 文件（可选，settings_test.py 已提供默认值）
+          cat > .env << EOF
+          # 可选：使用真实 Redis
+          CELERY_BROKER_URL=redis://localhost:6379/0
+          CELERY_RESULT_BACKEND=redis://localhost:6379/0
+          EOF
+          echo "✅ 环境变量配置完成"
+
+      # 步骤 5：Django 系统检查
+      - name: 🔍 Django 系统检查
+        run: |
+          echo "执行 Django 系统检查..."
+          python manage.py check --settings=SkillSpace.settings_test
+          echo "✅ 系统检查通过"
+
+      # 步骤 6：执行数据库迁移
+      - name: 🗄️ 数据库迁移
+        run: |
+          echo "执行数据库迁移（SQLite 内存模式）..."
+          python manage.py migrate --settings=SkillSpace.settings_test --verbosity=2
+          echo "✅ 数据库迁移完成"
+
+      # 步骤 7：运行单元测试
+      - name: 🧪 运行单元测试
+        run: |
+          echo "运行 Django 单元测试..."
+          python manage.py test --settings=SkillSpace.settings_test --verbosity=2
+          echo "✅ 测试完成"
