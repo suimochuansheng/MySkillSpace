@@ -179,20 +179,13 @@ jobs:
           echo "已安装的包列表："
           pip list
       
-      # 步骤4：配置测试环境变量
+      # 步骤4：配置测试环境变量（简化版）
       - name: ⚙️ 配置测试环境变量
         run: |
-          # 创建测试用的.env文件
+          # 创建简化的.env文件（settings_test.py 已提供默认值）
           cat > .env << EOF
-          # Django核心配置
-          SECRET_KEY=test-secret-key-for-ci-only-do-not-use-in-production
-          DEBUG=False
-          
-          # 数据库配置（使用SQLite进行测试）
-          DB_ENGINE=django.db.backends.sqlite3
-          DB_NAME=:memory:
-          
-          # Celery配置（使用CI环境的Redis）
+          # 测试环境最小配置
+          SECRET_KEY=test-secret-key-for-ci
           CELERY_BROKER_URL=redis://localhost:6379/0
           CELERY_RESULT_BACKEND=redis://localhost:6379/0
           EOF
