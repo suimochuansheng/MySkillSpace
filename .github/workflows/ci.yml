@@ -89,7 +89,7 @@ jobs:
           # 直接安装依赖，不过滤 PyTorch（如需要可手动调整）
           pip install -r requirements.txt || {
             echo "⚠️ 完整安装失败，尝试安装核心依赖"
-            pip install django djangorestframework djangorestframework-simplejwt django-cors-headers
+            pip install django djangorestframework djangorestframework-simplejwt django-cors-headers PyMySQL
           }
           echo "✅ 依赖安装完成"
 
