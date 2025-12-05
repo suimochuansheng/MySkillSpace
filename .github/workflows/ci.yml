@@ -158,25 +158,20 @@ jobs:
           echo "🔧 正在适配 CI 环境..."
           
           # =======================================================
-          # 修改方案：使用 grep 生成干净的依赖文件
-          # 原因：原 requirements.txt 包含 PyPI 上没有的 +cu124 版本
+          # 1. 【核心修复】生成清理后的依赖文件
+          # 使用 grep -v 剔除所有包含 "torch" 的行，另存为 requirements.ci.txt
+          # 这能解决 sed 修改原文件失败导致依然读取 +cu124 版本的问题
           # =======================================================
-          
-          # 1. 过滤掉所有包含 'torch' 字眼的行，生成 requirements.ci.txt
-          # 这会自动剔除 torch, torchvision, torchaudio
           grep -v "torch" requirements.txt > requirements.ci.txt
           
-          echo "📋 检查生成的 CI 依赖文件 (前10行):"
-          head -n 10 requirements.ci.txt
+          echo "📋 检查生成的 CI 依赖文件 (排除 torch 后):"
+          cat requirements.ci.txt | grep "transformers" || true
           
-          # 2. 【关键】手动安装 CPU 版本的 PyTorch
-          # 必须指定 --index-url https://download.pytorch.org/whl/cpu
-          # 这样既快又不会报错，且满足 Django 运行需求
+          # 2. 手动安装 CPU 版本的 PyTorch (这一步保持不变，指定官方 CPU 源)
           echo "⬇️ 安装 PyTorch (CPU版)..."
           pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-          # 3. 安装剩余的其他依赖
-          # 注意：这里使用我们新生成的 requirements.ci.txt
+          # 3. 【关键修改】安装剩余依赖时，指定使用 requirements.ci.txt
           echo "⬇️ 安装其他依赖..."
           pip install -r requirements.ci.txt
           
