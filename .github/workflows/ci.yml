@@ -46,7 +46,11 @@ jobs:
     steps:
       - name: 📥 检出代码
         uses: actions/checkout@v4
-      
+
+            # === 添加这一行来验证 ===
+      - name: 🚩 身份验证
+        run: echo "我是新版本的CI文件！！！版本号 v2.0"
+
       - name: 🟢 设置 Node.js
         uses: actions/setup-node@v4
         with:
