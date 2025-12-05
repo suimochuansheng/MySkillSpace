@@ -156,19 +156,29 @@ jobs:
           python -m pip install --upgrade pip
           
           echo "🔧 正在适配 CI 环境..."
-           # 1. 【暴力方案】直接从 requirements.txt 中删除 torch 相关行
-          # 这样 pip install -r 时就会忽略 torch，避免报错
-          sed -i '/torch==/d' requirements.txt
-          sed -i '/torchvision==/d' requirements.txt
-          sed -i '/torchaudio==/d' requirements.txt
           
-          # 2. 【手动安装】指定安装 CPU 版本的 PyTorch
-          # 使用 PyTorch 官方 CPU 源，下载速度极快，且版本匹配
+          # =======================================================
+          # 修改方案：使用 grep 生成干净的依赖文件
+          # 原因：原 requirements.txt 包含 PyPI 上没有的 +cu124 版本
+          # =======================================================
+          
+          # 1. 过滤掉所有包含 'torch' 字眼的行，生成 requirements.ci.txt
+          # 这会自动剔除 torch, torchvision, torchaudio
+          grep -v "torch" requirements.txt > requirements.ci.txt
+          
+          echo "📋 检查生成的 CI 依赖文件 (前10行):"
+          head -n 10 requirements.ci.txt
+          
+          # 2. 【关键】手动安装 CPU 版本的 PyTorch
+          # 必须指定 --index-url https://download.pytorch.org/whl/cpu
+          # 这样既快又不会报错，且满足 Django 运行需求
+          echo "⬇️ 安装 PyTorch (CPU版)..."
           pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-          echo "开始安装Django、DRF等后端依赖..."
-          # 使用默认源安装（此时已变成标准CPU版本，速度快且能成功）
-          pip install -r requirements.txt
+          # 3. 安装剩余的其他依赖
+          # 注意：这里使用我们新生成的 requirements.ci.txt
+          echo "⬇️ 安装其他依赖..."
+          pip install -r requirements.ci.txt
           
           echo "✅ 后端依赖安装完成"
           echo "已安装的包列表："
