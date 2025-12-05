@@ -43,37 +43,77 @@ jobs:
       run:
         working-directory: frontend/skillspace
     
-    steps:
+steps:
       - name: 📥 检出代码
         uses: actions/checkout@v4
-
-            # === 添加这一行来验证 ===
-      - name: 🚩 身份验证
-        run: echo "我是新版本的CI文件！！！版本号 v2.0.--text"
-
-      - name: 🟢 设置 Node.js
-        uses: actions/setup-node@v4
+      
+      - name: 🐍 设置 Python
+        uses: actions/setup-python@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/skillspace/package-lock.json
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          # 注意：这里暂时移除 cache-dependency-path，因为文件编码变动可能导致 hash 计算错误
+          # cache-dependency-path: backend/requirements.txt
       
-      - name: 📦 安装依赖
-        run: npm ci --prefer-offline --no-audit
-      
-      # 预留：代码检查与单元测试
-      # - run: npm run lint
-      # - run: npm run test:unit
-      
-      - name: 🏗️ 构建生产版本
-        run: npm run build
-      
-      - name: 📤 上传构建产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: ${{ env.FRONTEND_BUILD_DIR }}
-          retention-days: 7
+      - name: 📦 安装后端依赖
+        run: |
+          set -e
+          echo "升级 pip..."
+          python -m pip install --upgrade pip
+          
+          echo "🔧 正在执行编码清洗 (UTF-16 -> UTF-8)..."
+          # ========================================================
+          # 核心修复：使用 Python 脚本将 requirements.txt 统一转为 UTF-8
+          # ========================================================
+          python -c "
+import os
+
+file_path = 'requirements.txt'
+try:
+    # 1. 尝试以 UTF-16 读取 (处理 PowerShell 生成的文件)
+    with open(file_path, 'r', encoding='utf-16') as f:
+        content = f.read()
+    print('检测到 UTF-16 编码，已读取。')
+except UnicodeError:
+    # 2. 如果失败，尝试以 UTF-8 读取 (处理普通文件)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    print('检测到 UTF-8 编码，已读取。')
+
+# 3. 重新写入为无 BOM 的标准 UTF-8
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+print('✅ 文件已转换为标准 UTF-8 格式')
+          "
+          # 验证文件内容（确保第一行没有乱码了）
+          echo "📄 转换后的文件头部预览："
+          head -n 5 requirements.txt
+          
+          echo "🔧 精准剔除 requirements.txt 中的 Torch 相关包声明..."
+          # 现在文件是纯净的 UTF-8，可以直接 grep，不需要 -a 参数了
+          grep -Ev "^(torch|torchvision|torchaudio)($|=|>|<|~)" requirements.txt > requirements.ci.txt
+          
+          # 安装 CPU 版 PyTorch
+          echo "⬇️ 安装 PyTorch (CPU 版)..."
+          pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+          
+          # 安装其余依赖
+          echo "⬇️ 安装项目其余依赖..."
+          pip install -r requirements.ci.txt
+          
+          # 安装 pymysql
+          echo "⬇️ 安装 pymysql 驱动..."
+          pip install pymysql
+          
+          # 注册 pymysql
+          echo "🔧 注册 pymysql 作为 MySQL 驱动..."
+          sed -i '1i import pymysql\npymysql.install_as_MySQLdb()' SkillSpace/settings.py
+          
+          # 验证安装
+          echo "✅ 验证核心依赖安装："
+          python -c "import django; print('Django 版本:', django.get_version())"
+          python -c "import torch; print('Torch 版本:', torch.__version__)"
+          python -c "import pymysql; print('pymysql 版本:', pymysql.__version__)"
 
   # ========================================
   # 作业2：后端测试 (集成 MySQL & Redis)
