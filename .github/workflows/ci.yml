@@ -68,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   backend-test:
-    name: 后端测试 (Django + settings_test.py)
+    name: 后端测试 (Django + settings.py)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -99,20 +99,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           
-          # 编码转换增强：先检查文件存在性
+          # 编码转换：尝试UTF-16转UTF-8，失败则跳过
           if [ -f "requirements.txt" ]; then
-            python << 'EOF'
-            try:
-                with open('requirements.txt', 'r', encoding='utf-16') as f:
-                    content = f.read()
-                with open('requirements.txt', 'w', encoding='utf-8') as f:
-                    f.write(content)
-                print('✅ 文件编码转换成功')
-            except UnicodeDecodeError:
-                print('ℹ️ 文件已为UTF-8编码')
-            except Exception as e:
-                print(f'⚠️ 编码转换警告: {e}')
-          EOF
+            python -c "try:\n  with open('requirements.txt', 'r', encoding='utf-16') as f: content = f.read()\n  with open('requirements.txt', 'w', encoding='utf-8') as f: f.write(content)\n  print('✅ 文件编码转换成功')\nexcept UnicodeDecodeError:\n  print('ℹ️ 文件已为UTF-8编码')\nexcept Exception as e:\n  print(f'⚠️ 编码转换警告: {e}')" || echo "编码转换跳过"
           else
             echo "⚠️ requirements.txt 不存在"
           fi
@@ -129,25 +118,25 @@ jobs:
 
       - name: ⚙️ 配置环境变量
         run: |
-          cat > .env << EOF
+          cat > .env << 'ENVEOF'
           CELERY_BROKER_URL=redis://localhost:6379/0
           CELERY_RESULT_BACKEND=redis://localhost:6379/0
-          EOF
+          ENVEOF
           echo "✅ 环境变量配置完成"
 
       - name: 🔍 Django 系统检查
         run: |
-          python manage.py check --settings=SkillSpace.settings_test
+          python manage.py check --settings=SkillSpace.settings
           echo "✅ 系统检查通过"
 
       - name: 🗄️ 数据库迁移
         run: |
-          python manage.py migrate --settings=SkillSpace.settings_test --verbosity=2
+          python manage.py migrate --settings=SkillSpace.settings --verbosity=2
           echo "✅ 数据库迁移完成"
 
       - name: 🧪 运行单元测试
         run: |
           # 注入环境变量控制模型测试
           export SKIP_MODEL_TESTS=${{ env.SKIP_MODEL_TESTS }}
-          python manage.py test --settings=SkillSpace.settings_test --verbosity=2
+          python manage.py test --settings=SkillSpace.settings --verbosity=2
           echo "✅ 测试完成"
