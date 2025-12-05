@@ -146,7 +146,7 @@ jobs:
   # ========================================
   backend-test:
     # 作业显示名称
-    name: 后端测试与检查 (Django + settings_test.py)
+    name: 后端测试与检查 (Django + settings.py)
     
     # 运行环境：Ubuntu 最新版
     runs-on: ubuntu-latest
@@ -164,7 +164,7 @@ jobs:
     services:
       # Redis 服务容器（可选）
       # 用途：测试 Celery 异步任务功能
-      # 注意：settings_test.py 默认使用内存模式，不依赖真实 Redis
+      # 注意：settings.py 默认使用内存模式，不依赖真实 Redis
       redis:
         # 使用官方 Redis 7 Alpine 镜像（体积小，启动快）
         image: redis:7-alpine
@@ -224,51 +224,51 @@ jobs:
       
       # ---------------------------------------------------
       # 步骤4：配置测试环境变量（可选）
-      # settings_test.py 已经提供了所有必要的默认配置
+      # settings.py 已经提供了所有必要的默认配置
       # 这里创建 .env 文件仅用于覆盖默认值（如果需要）
       # ---------------------------------------------------
       - name: ⚙️ 配置测试环境变量（可选）
         run: |
-          # settings_test.py 已提供所有必要的默认配置
+          # settings.py 已提供所有必要的默认配置
           # 这里仅在需要覆盖默认值时创建 .env 文件
           cat > .env << EOF
           # 可选：使用真实 Redis（如果需要测试 Celery 异步任务）
-          # settings_test.py 默认使用内存模式 memory://，无需真实 Redis
+          # settings.py 默认使用内存模式 memory://，无需真实 Redis
           CELERY_BROKER_URL=redis://localhost:6379/0
           CELERY_RESULT_BACKEND=redis://localhost:6379/0
           EOF
           
-          echo "✅ 环境变量已配置（settings_test.py 提供默认值）"
+          echo "✅ 环境变量已配置（settings.py 提供默认值）"
 
       # 步骤5：Django 系统检查
       # 作用：检查 Django 配置是否正确，是否有错误或警告
-      # --settings: 指定使用测试配置文件 settings_test.py
+      # --settings: 指定使用测试配置文件 settings.py
       - name: 🔍 Django系统检查
-        run: python manage.py check --settings=SkillSpace.settings_test
+        run: python manage.py check --settings=SkillSpace.settings
 
       # 步骤6：执行数据库迁移
       # 作用：将 Django 模型同步到数据库（创建表结构）
-      # settings_test.py 使用 SQLite 内存数据库 (:memory:)
+      # settings.py 使用 SQLite 内存数据库 (:memory:)
       # 优势：无需配置，速度快，测试后自动销毁
       - name: 🗄️ 执行数据库迁移
         run: |
           echo "开始数据库迁移（SQLite 内存数据库）..."
           # --verbosity=2: 显示详细的迁移信息
-          python manage.py migrate --settings=SkillSpace.settings_test --verbosity=2
+          python manage.py migrate --settings=SkillSpace.settings --verbosity=2
           echo "✅ 数据库迁移完成"
 
       # 步骤7：运行后端单元测试
       # 作用：执行所有 Django 测试用例，验证代码功能
-      # settings_test.py 优化配置：
+      # settings.py 优化配置：
       # - 使用 MD5 密码哈希（比 PBKDF2 快10倍）
       # - Celery 同步执行任务（CELERY_TASK_ALWAYS_EAGER=True）
       # - 内存邮件后端（不发送真实邮件）
       - name: 🧪 运行后端单元测试
         run: |
-          echo "开始运行 Django 单元测试（使用 settings_test.py）..."
+          echo "开始运行 Django 单元测试（使用 settings.py）..."
           # --verbosity=2: 显示详细的测试信息
           # Django 会自动创建测试数据库（SQLite :memory:）
-          python manage.py test --settings=SkillSpace.settings_test --verbosity=2
+          python manage.py test --settings=SkillSpace.settings --verbosity=2
           echo "✅ 测试完成"
 
   # ========================================
