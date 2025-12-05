@@ -24,6 +24,17 @@ env:
   FRONTEND_BUILD_DIR: frontend/skillspace/dist
   # 新增：模型测试标记
   SKIP_MODEL_TESTS: "true"  # CI环境默认跳过模型加载测试
+  # Django 测试配置
+  DJANGO_SETTINGS_MODULE: "SkillSpace.settings"
+  SECRET_KEY: "ci-test-secret-key-123456"
+  # MySQL 配置
+  MYSQL_ROOT_PASSWORD: "ci-mysql-root-123"
+  MYSQL_DATABASE: "skillspace_test"
+  MYSQL_USER: "ci_user"
+  MYSQL_PASSWORD: "ci_pass_123"
+  # Celery 测试关键配置（同步执行任务，无需启动worker）
+  CELERY_TASK_ALWAYS_EAGER: "True"
+  CELERY_TASK_EAGER_PROPAGATES: "True"
 
 # ========================================
 # 作业定义
@@ -68,11 +79,12 @@ jobs:
           if-no-files-found: error
 
   backend-test:
-    name: 后端测试 (Django + settings.py)
+    name: 后端测试 (Django + MySQL + Redis + Celery)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    # 补充 MySQL 服务（Django 依赖，之前遗漏）
     services:
       redis:
         image: redis:7-alpine
@@ -80,6 +92,20 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ env.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -92,60 +118,116 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          # 缓存 pip，但基于虚拟环境路径（避免与系统依赖冲突）
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      - name: 📦 安装核心依赖（优先确保Django安装）
+      - name: 📦 安装系统依赖（MySQL客户端、编译依赖）
         run: |
-          python -m pip install --upgrade pip
-      
-          # 强制安装项目核心依赖（覆盖settings中导入的所有模块）
-          pip install \
-            django>=4.2.0 \
-            djangorestframework>=3.14.0 \
-            pymysql>=1.1.0 \
-            redis>=4.5.0 \
-            celery>=5.3.0 \
-            requests>=2.31.0
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            mysql-client \
+            redis-tools \
+            gcc \
+            python3-dev \
+            default-libmysqlclient-dev
+          echo "✅ 系统依赖安装完成"
 
+      - name: 🛠️ 创建并激活 Python 虚拟环境（核心修改）
+        run: |
+          # 创建虚拟环境（放在backend目录下，便于缓存）
+          python -m venv .venv
+          # 激活虚拟环境（Linux/macOS 用 source，Windows 用 .venv\Scripts\activate）
+          source .venv/bin/activate
+          # 验证虚拟环境生效（输出当前Python路径）
+          echo "当前Python路径: $(which python)"
+          echo "当前pip路径: $(which pip)"
+          # 升级pip
+          pip install --upgrade pip
+          echo "✅ 虚拟环境配置完成"
+
+      - name: 📦 处理依赖文件并安装（整合到虚拟环境）
+        run: |
+          source .venv/bin/activate  # 每次step都要激活虚拟环境！
+          
           # 编码转换：尝试UTF-16转UTF-8，失败则跳过
           if [ -f "requirements.txt" ]; then
-            python -c "try:\n  with open('requirements.txt', 'r', encoding='utf-16') as f: content = f.read()\n  with open('requirements.txt', 'w', encoding='utf-8') as f: f.write(content)\n  print('✅ 文件编码转换成功')\nexcept UnicodeDecodeError:\n  print('ℹ️ 文件已为UTF-8编码')\nexcept Exception as e:\n  print(f'⚠️ 编码转换警告: {e}')" || echo "编码转换跳过"
+            python -c "try:
+              with open('requirements.txt', 'r', encoding='utf-16') as f: content = f.read()
+              with open('requirements.txt', 'w', encoding='utf-8') as f: f.write(content)
+              print('✅ 文件编码转换成功')
+            except UnicodeDecodeError:
+              print('ℹ️ 文件已为UTF-8编码')
+            except Exception as e:
+              print(f'⚠️ 编码转换警告: {e}')" || echo "编码转换跳过"
           else
-            echo "⚠️ requirements.txt 不存在"
-          fi
+            echo "❌ requirements.txt 不存在，终止流程"
+            exit 1
           
-          # 过滤PyTorch包
-          grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.ci.txt || true
+          # 过滤PyTorch包（生成CI专用依赖文件）
+          grep -Ev "^(torch|torchvision|torchaudio)" requirements.txt > requirements.ci.txt || {
+            echo "⚠️ 过滤PyTorch失败，使用原requirements.txt"
+            cp requirements.txt requirements.ci.txt
+          }
           
-          # 安装CPU版本PyTorch
+          # 安装CPU版本PyTorch（优先于项目依赖，避免版本冲突）
           pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-          # 安装项目依赖
+          # 安装项目核心依赖（虚拟环境内）
           pip install -r requirements.ci.txt
-          echo "✅ 依赖安装完成"
+          
+          # 验证关键包安装
+          pip list | grep -E "django|djangorestframework|celery|redis|pymysql"
+          echo "✅ 项目依赖安装完成"
 
-      - name: ⚙️ 配置环境变量
+      - name: ⏳ 等待 MySQL/Redis 服务就绪
         run: |
+          source .venv/bin/activate
+          # 等待MySQL
+          until mysql -h 127.0.0.1 -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1"; do
+            echo "等待MySQL服务启动..."; sleep 2
+          done
+          # 等待Redis
+          until redis-cli ping; do
+            echo "等待Redis服务启动..."; sleep 2
+          done
+          # 确保测试数据库存在
+          mysql -h 127.0.0.1 -u root -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};"
+          echo "✅ 所有依赖服务就绪"
+
+      - name: ⚙️ 生成环境变量文件（适配Django配置）
+        run: |
+          source .venv/bin/activate
           cat > .env << 'ENVEOF'
-          CELERY_BROKER_URL=redis://localhost:6379/0
-          CELERY_RESULT_BACKEND=redis://localhost:6379/0
+          # 数据库配置
+          DATABASE_URL=mysql+pymysql://${{ env.MYSQL_USER }}:${{ env.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ env.MYSQL_DATABASE }}
+          # Redis/Celery 配置
+          CELERY_BROKER_URL=redis://127.0.0.1:6379/0
+          CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
+          # 测试标记
+          SKIP_MODEL_TESTS=${{ env.SKIP_MODEL_TESTS }}
           ENVEOF
-          echo "✅ 环境变量配置完成"
+          cat .env  # 打印验证
+          echo "✅ 环境变量文件生成完成"
 
       - name: 🔍 Django 系统检查
         run: |
-          python manage.py check --settings=SkillSpace.settings
-          echo "✅ 系统检查通过"
+          source .venv/bin/activate
+          python manage.py check --settings=${{ env.DJANGO_SETTINGS_MODULE }}
+          echo "✅ Django 系统检查通过"
 
-      - name: 🗄️ 数据库迁移
+      - name: 🗄️ 数据库迁移（测试环境）
         run: |
-          python manage.py migrate --settings=SkillSpace.settings --verbosity=2
+          source .venv/bin/activate
+          python manage.py migrate --settings=${{ env.DJANGO_SETTINGS_MODULE }} --verbosity=2
           echo "✅ 数据库迁移完成"
 
-      - name: 🧪 运行单元测试
+      - name: 🧪 运行单元测试（含DRF/Celery）
         run: |
-          # 注入环境变量控制模型测试
-          export SKIP_MODEL_TESTS=${{ env.SKIP_MODEL_TESTS }}
-          python manage.py test --settings=SkillSpace.settings --verbosity=2
-          echo "✅ 测试完成"
+          source .venv/bin/activate
+          # 注入环境变量
+          export SECRET_KEY=${{ env.SECRET_KEY }}
+          export CELERY_TASK_ALWAYS_EAGER=${{ env.CELERY_TASK_ALWAYS_EAGER }}
+          export CELERY_TASK_EAGER_PROPAGATES=${{ env.CELERY_TASK_EAGER_PROPAGATES }}
+          # 执行测试（跳过模型测试）
+          python manage.py test --settings=${{ env.DJANGO_SETTINGS_MODULE }} --verbosity=2 -k "not model_test"
+          echo "✅ 后端测试全部完成"
