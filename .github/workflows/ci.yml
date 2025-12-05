@@ -49,7 +49,7 @@ jobs:
 
             # === 添加这一行来验证 ===
       - name: 🚩 身份验证
-        run: echo "我是新版本的CI文件！！！版本号 v2.0.1-sed"
+        run: echo "我是新版本的CI文件！！！版本号 v2.0.2-sed"
 
       - name: 🟢 设置 Node.js
         uses: actions/setup-node@v4
@@ -130,44 +130,62 @@ jobs:
       # ---------------------------------------------------
       # 安装依赖 (精确剔除 torch 相关包的声明（只匹配以 torch 开头的包）,含 PyTorch CPU 版修复)
       # ---------------------------------------------------
-      - name: 📦 安装后端依赖
-        run: |
-          echo "升级pip..."
-          python -m pip install --upgrade pip
-          
-          echo "🔧 正在适配 CI 环境 (使用CPU版PyTorch)..."
-          # 1. 从 requirements.txt 中移除 GPU 版 torch
-          sed -i '/torch==/d' requirements.txt
-          sed -i '/torchvision==/d' requirements.txt
-          sed -i '/torchaudio==/d' requirements.txt
-          
-          # 2. 手动安装 CPU 版本 PyTorch (加速 CI 下载)
-          pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
-          
-          echo "安装其他依赖..."
-          pip install -r requirements.txt
-
       # - name: 📦 安装后端依赖
       #   run: |
-      #     echo "升级 pip..."
+      #     echo "升级pip..."
       #     python -m pip install --upgrade pip
           
-      #     echo "🔧 处理依赖文件..."
-      #     # 1. 剔除原文件中的 torch 相关行（避免 +cu124 版本报错）
-      #     grep -v "torch" requirements.txt > requirements.ci.txt
+      #     echo "🔧 正在适配 CI 环境 (使用CPU版PyTorch)..."
+      #     # 1. 从 requirements.txt 中移除 GPU 版 torch
+      #     sed -i '/torch==/d' requirements.txt
+      #     sed -i '/torchvision==/d' requirements.txt
+      #     sed -i '/torchaudio==/d' requirements.txt
           
-      #     # 2. 安装 CPU 版 PyTorch (速度快，无驱动依赖)
-      #     echo "⬇️ 安装 PyTorch (CPU)..."
+      #     # 2. 手动安装 CPU 版本 PyTorch (加速 CI 下载)
       #     pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-      #     # 3. 安装其余项目依赖
-      #     echo "⬇️ 安装项目依赖..."
-      #     pip install -r requirements.ci.txt
+      #     echo "安装其他依赖..."
+      #     pip install -r requirements.txt
+
+      - name: 📦 安装后端依赖
+        run: |
+          set -e  # 命令执行失败立即终止，便于定位问题
+          echo "升级 pip..."
+          python -m pip install --upgrade pip
           
-      #     # 4. 【重要】安装 MySQL 驱动 (CI环境必须手动补充)
-      #     pip install mysqlclient pkgconfig
+          echo "🔧 精准剔除 requirements.txt 中的 Torch 相关包声明..."
+          # 只删除 torch/torchvision/torchaudio 包声明行，不影响其他依赖
+          grep -Ev "^(torch|torchvision|torchaudio)($|=|>|<|~)" requirements.txt > requirements.ci.txt
           
-      #     echo "✅ 依赖安装完成"
+          # 验证过滤结果（可选，方便调试）
+          echo "📄 过滤后的 requirements.ci.txt 内容："
+          cat requirements.ci.txt
+          
+          # 安装 CPU 版 PyTorch（避免 CUDA 驱动依赖）
+          echo "⬇️ 安装 PyTorch (CPU 版)..."
+          pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+          
+          # 安装其余项目依赖（含 Django 等核心依赖）
+          echo "⬇️ 安装项目其余依赖..."
+          pip install -r requirements.ci.txt
+          
+          # 【关键】安装 pymysql（替代 mysqlclient），无需 pkgconfig
+          echo "⬇️ 安装 pymysql 驱动..."
+          pip install pymysql
+          
+          # 【核心】注册 pymysql 到 Django（必须步骤，否则数据库连接失败）
+          echo "🔧 注册 pymysql 作为 MySQL 驱动..."
+          # 方式1：直接在 CI 中修改 Django 配置（临时生效，无需改源码）
+          # 向 Django 主配置文件头部插入 pymysql 注册代码
+          sed -i '1i import pymysql\npymysql.install_as_MySQLdb()' SkillSpace/settings.py
+          
+          # 验证安装结果（确认核心依赖都装好）
+          echo "✅ 验证核心依赖安装："
+          python -c "import django; print('Django 版本:', django.get_version())"
+          python -c "import torch; print('Torch 版本:', torch.__version__); print('Torch CUDA 可用:', torch.cuda.is_available())"
+          python -c "import pymysql; print('pymysql 版本:', pymysql.__version__)"
+          
+          echo "✅ 依赖安装 & 驱动配置完成"
 
       # ---------------------------------------------------
       # 配置环境变量 (连接 Service 容器)
