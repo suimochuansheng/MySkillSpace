@@ -132,26 +132,20 @@ jobs:
       # ---------------------------------------------------
       - name: 📦 安装后端依赖
         run: |
-          echo "升级 pip..."
+          echo "升级pip..."
           python -m pip install --upgrade pip
           
-          echo "🔧 处理依赖文件..."
-          # 精确剔除 torch 相关包的声明（只匹配以 torch 开头的包）
-          # 避免误删包含 "torch" 字符串的其他依赖（如 Django 相关注释行）
-          grep -Ev "^torch($|=|>|<|~)" requirements.txt > requirements.ci.txt
+          echo "🔧 正在适配 CI 环境 (使用CPU版PyTorch)..."
+          # 1. 从 requirements.txt 中移除 GPU 版 torch
+          sed -i '/torch==/d' requirements.txt
+          sed -i '/torchvision==/d' requirements.txt
+          sed -i '/torchaudio==/d' requirements.txt
           
-          # 安装 CPU 版 PyTorch
-          echo "⬇️ 安装 PyTorch (CPU)..."
+          # 2. 手动安装 CPU 版本 PyTorch (加速 CI 下载)
           pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cpu
           
-          # 安装其余项目依赖（确保包含 Django）
-          echo "⬇️ 安装项目依赖..."
-          pip install -r requirements.ci.txt
-          
-          # 安装 MySQL 驱动
-          pip install mysqlclient pkgconfig
-          
-          echo "✅ 依赖安装完成"
+          echo "安装其他依赖..."
+          pip install -r requirements.txt
 
       # - name: 📦 安装后端依赖
       #   run: |
@@ -204,9 +198,9 @@ jobs:
           
           echo "✅ 环境变量已注入 (.env)"
 
-      - name: 🧐 验证Django安装
-        run: |
-            python -c "import django; print('Django版本:', django.get_version())"
+      # - name: 🧐 验证Django安装
+      #   run: |
+      #       python -c "import django; print('Django版本:', django.get_version())"
 
       - name: 🔍 Django 系统检查
         run: python manage.py check
