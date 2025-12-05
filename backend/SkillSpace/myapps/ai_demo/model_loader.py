@@ -8,6 +8,7 @@ from transformers import (
 )
 from modelscope import snapshot_download
 from threading import Lock
+import traceback  # 移至顶部统一导入
 
 model_lock = Lock()
 
@@ -17,6 +18,7 @@ model_lock = Lock()
 MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 MODEL_CACHE_DIR = "./qwen_model_cache"
 DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
+MAX_PROMPT_LENGTH = 2000  # 与API限制保持一致
 
 print(f"当前运行环境：torch={torch.__version__} | bitsandbytes={bnb.__version__} | CUDA={torch.version.cuda}")
 
@@ -31,18 +33,16 @@ model_dir = snapshot_download(
 tokenizer = AutoTokenizer.from_pretrained(
     model_dir,
     trust_remote_code=True,
-    padding_side="right", # 确保padding在右侧
+    padding_side="right",  # 确保padding在右侧
     use_fast=False
 )
 
 # --------------------------
-# 关键修改 1：使用 float32 进行计算
+# 量化配置
 # --------------------------
-# 解释：虽然模型权重存储为4-bit（很小），但我们将计算过程强制转为32位浮点数。
-# 这会稍微增加一点点推理时的显存占用（约0.5GB），但能彻底解决 inf/nan 报错。
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float32, # ✅ 救命稻草：强制使用 FP32 避免溢出
+    bnb_4bit_compute_dtype=torch.float32,  # 使用FP32避免溢出
     bnb_4bit_use_double_quant=True,
     bnb_4bit_quant_type="nf4"
 )
@@ -56,12 +56,16 @@ model = AutoModelForCausalLM.from_pretrained(
 ).eval()
 
 def generate_answer(prompt: str) -> str:
+    """生成回答的核心函数，包含输入验证和模型推理"""
+    # 输入验证
     if not prompt.strip():
         return "请输入有效的问题！"
+    if len(prompt) > MAX_PROMPT_LENGTH:
+        return f"输入过长（当前{len(prompt)}字），请控制在{MAX_PROMPT_LENGTH}字以内"
     
     with model_lock:
         try:
-            # 1. 构建 Prompt
+            # 构建对话模板
             messages = [
                 {"role": "system", "content": "你是一个乐于助人的AI助手。"},
                 {"role": "user", "content": prompt}
@@ -73,24 +77,24 @@ def generate_answer(prompt: str) -> str:
                 add_generation_prompt=True
             )
             
-            # 2. 获取输入和 Attention Mask
+            # 编码输入
             encoding = tokenizer([text], return_tensors="pt")
             input_ids = encoding.input_ids.to(DEVICE)
-            attention_mask = encoding.attention_mask.to(DEVICE) # ✅ 显式获取 mask
+            attention_mask = encoding.attention_mask.to(DEVICE)
             
-            # 3. 生成配置 (保守参数，追求稳定)
+            # 生成配置
             generated_ids = model.generate(
                 input_ids,
-                attention_mask=attention_mask, # ✅ 显式传入 mask，防止计算错误
+                attention_mask=attention_mask,
                 max_new_tokens=512,
                 do_sample=True,
-                temperature=0.6,    # 稍微降低温度，减少随机性带来的溢出风险
+                temperature=0.6,
                 top_p=0.9,
-                repetition_penalty=1.05, # 稍微降低惩罚力度
+                repetition_penalty=1.05,
                 pad_token_id=tokenizer.eos_token_id
             )
             
-            # 4. 解码
+            # 解码输出
             generated_ids = [
                 output_ids[len(input_ids):] for input_ids, output_ids in zip(input_ids, generated_ids)
             ]
@@ -98,8 +102,9 @@ def generate_answer(prompt: str) -> str:
             return answer
         
         except Exception as e:
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            import traceback
             traceback.print_exc()
             return f"生成出错：{str(e)}"
+        finally:
+            # 确保显存清理
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
