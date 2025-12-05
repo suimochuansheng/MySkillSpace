@@ -8,7 +8,12 @@
           <div class="user-section">
             <el-dropdown @command="handleUserCommand">
               <span class="user-avatar-wrapper">
-                <el-avatar :size="40" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+                <el-avatar 
+                  :size="40" 
+                  :src="currentAvatar" 
+                  class="user-avatar"
+                  @click.stop="showAvatarDialog = true"
+                />
                 <span class="username">{{ currentUser.username || currentUser.email }}</span>
               </span>
               <template #dropdown>
@@ -67,13 +72,42 @@
         </el-container>
       </el-container>
     </el-container>
+    
+    <!-- 头像选择对话框 -->
+    <el-dialog 
+      v-model="showAvatarDialog" 
+      title="选择头像" 
+      width="500px"
+      align-center
+    >
+      <div class="avatar-selection">
+        <div 
+          v-for="avatar in avatarList" 
+          :key="avatar.id"
+          class="avatar-option"
+          :class="{ 'avatar-selected': currentAvatar === avatar.url }"
+          @click="selectAvatar(avatar.url)"
+        >
+          <el-avatar :size="80" :src="avatar.url" />
+          <div class="avatar-check" v-if="currentAvatar === avatar.url">
+            <el-icon><Check /></el-icon>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showAvatarDialog = false">取消</el-button>
+          <el-button type="primary" @click="confirmAvatar">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Document, List, DataAnalysis, User, SwitchButton, ChatDotRound } from '@element-plus/icons-vue';
+import { Document, List, DataAnalysis, User, SwitchButton, ChatDotRound, Check } from '@element-plus/icons-vue';
 import { authAPI } from '@/api';
 
 // 导入模块组件
@@ -92,6 +126,27 @@ const currentUser = ref({
   username: '',
   email: ''
 });
+
+// 头像相关状态
+const showAvatarDialog = ref(false);
+const currentAvatar = ref('http://localhost:8000/static/avatars/avatar1.svg');
+const selectedAvatar = ref('http://localhost:8000/static/avatars/avatar1.svg');
+
+// 可选头像列表
+const avatarList = [
+  {
+    id: 1,
+    url: 'http://localhost:8000/static/avatars/avatar1.svg'
+  },
+  {
+    id: 2,
+    url: 'http://localhost:8000/static/avatars/avatar2.svg'
+  },
+  {
+    id: 3,
+    url: 'http://localhost:8000/static/avatars/avatar3.svg'
+  }
+];
 
 // 模块配置映射
 const moduleConfig = {
@@ -179,6 +234,13 @@ const fetchCurrentUser = async () => {
       currentUser.value = JSON.parse(storedUser);
     }
     
+    // 从localStorage加载头像设置
+    const storedAvatar = localStorage.getItem('userAvatar');
+    if (storedAvatar) {
+      currentAvatar.value = storedAvatar;
+      selectedAvatar.value = storedAvatar;
+    }
+    
     // 再从后端API获取最新信息
     const response = await authAPI.getCurrentUser();
     currentUser.value = response;
@@ -191,6 +253,20 @@ const fetchCurrentUser = async () => {
       window.location.href = '/';
     }
   }
+};
+
+// 选择头像
+const selectAvatar = (url) => {
+  selectedAvatar.value = url;
+};
+
+// 确认头像选择
+const confirmAvatar = () => {
+  currentAvatar.value = selectedAvatar.value;
+  // 保存到localStorage
+  localStorage.setItem('userAvatar', selectedAvatar.value);
+  showAvatarDialog.value = false;
+  ElMessage.success('头像更新成功');
 };
 
 // 组件挂载时获取用户信息
@@ -252,9 +328,32 @@ onMounted(() => {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* 头像样式优化 */
+.user-avatar {
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.user-avatar:hover {
+  border-color: #ffffff;
+  transform: scale(1.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* 用户名样式优化 - 提高辨识度 */
 .username {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 8px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+  padding: 4px 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* Aside侧边栏样式 */
@@ -310,6 +409,60 @@ onMounted(() => {
   margin: 0;
   font-size: 12px;
   color: #909399;
+}
+
+/* 头像选择对话框样式 */
+.avatar-selection {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 20px;
+  justify-items: center;
+}
+
+.avatar-option {
+  position: relative;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  padding: 5px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-option:hover {
+  border-color: #409eff;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.avatar-option.avatar-selected {
+  border-color: #67c23a;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.4);
+}
+
+.avatar-check {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: #67c23a;
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* 响应式设计 */

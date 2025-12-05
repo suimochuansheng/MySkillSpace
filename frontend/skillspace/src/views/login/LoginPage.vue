@@ -1,6 +1,13 @@
 <!-- src/components/LoginPage.vue -->
 <template>
   <div class="login-container">
+    <!-- 动态渐变背景层 -->
+    <div class="gradient-bg">
+      <div class="gradient-layer gradient-layer-1"></div>
+      <div class="gradient-layer gradient-layer-2"></div>
+      <div class="gradient-layer gradient-layer-3"></div>
+    </div>
+    
     <!-- 背景粒子动画（超炫！） -->
     <div class="particles" ref="particlesContainer"></div>
 
@@ -213,15 +220,115 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-/* 背景粒子动画（超炫！） */
+/* 背景容器 */
 .login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #1a1a2e; /* 深色基底 */
+}
+
+/* 动态渐变背景 - 性能优化版 */
+.gradient-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* 确保在基底之上 */
+  overflow: hidden;
+}
+
+/* 渐变层基础样式 */
+.gradient-layer {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  top: -25%;
+  left: -25%;
+  opacity: 1; /* 提高不透明度让效果更明显 */
+  mix-blend-mode: screen; /* 混合模式产生丰富色彩 */
+  will-change: transform; /* 启用GPU加速 */
+}
+
+/* 第一层渐变：紫蓝色调 */
+.gradient-layer-1 {
+  background: radial-gradient(
+    circle at 20% 50%,
+    rgba(106, 17, 203, 0.8) 0%,
+    rgba(37, 117, 252, 0.6) 50%,
+    transparent 100%
+  );
+  animation: drift-1 25s ease-in-out infinite;
+}
+
+/* 第二层渐变：青蓝色调 */
+.gradient-layer-2 {
+  background: radial-gradient(
+    circle at 80% 80%,
+    rgba(30, 60, 114, 0.9) 0%,
+    rgba(42, 82, 152, 0.7) 50%,
+    transparent 100%
+  );
+  animation: drift-2 30s ease-in-out infinite;
+  animation-delay: -5s; /* 错开动画时间 */
+}
+
+/* 第三层渐变：深紫色调 */
+.gradient-layer-3 {
+  background: radial-gradient(
+    circle at 50% 20%,
+    rgba(88, 28, 135, 0.7) 0%,
+    rgba(30, 60, 114, 0.5) 50%,
+    transparent 100%
+  );
+  animation: drift-3 35s ease-in-out infinite;
+  animation-delay: -10s; /* 错开动画时间 */
+}
+
+/* 渐变漂移动画 - 第一层 */
+@keyframes drift-1 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate(5%, -5%) scale(1.1) rotate(5deg);
+  }
+  50% {
+    transform: translate(-3%, 8%) scale(0.95) rotate(-3deg);
+  }
+  75% {
+    transform: translate(8%, 3%) scale(1.05) rotate(8deg);
+  }
+}
+
+/* 渐变漂移动画 - 第二层 */
+@keyframes drift-2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-8%, 5%) scale(1.08) rotate(-10deg);
+  }
+  66% {
+    transform: translate(6%, -6%) scale(0.92) rotate(8deg);
+  }
+}
+
+/* 渐变漂移动画 - 第三层 */
+@keyframes drift-3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  40% {
+    transform: translate(4%, 7%) scale(1.12) rotate(6deg);
+  }
+  80% {
+    transform: translate(-7%, -4%) scale(0.88) rotate(-12deg);
+  }
 }
 
 .particles {
@@ -230,7 +337,7 @@ const handleLogin = async () => {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 2; /* 在渐变背景之上 */
   pointer-events: none;
   overflow: hidden;
 }
@@ -275,7 +382,7 @@ const handleLogin = async () => {
   max-width: 450px;
   padding: 45px 35px;
   position: relative;
-  z-index: 1;
+  z-index: 10; /* 确保卡片在最上层 */
   transition: all 0.4s ease;
 }
 
