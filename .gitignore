@@ -124,6 +124,7 @@ backend/media/
 local_settings.py
 migrations/backup/
 backend/migrations/backup/
+backend/SkillSpace/myapps/**/migrations/
 
 # 测试覆盖率
 htmlcov/
