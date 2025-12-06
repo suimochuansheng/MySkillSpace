@@ -55,21 +55,52 @@ model = AutoModelForCausalLM.from_pretrained(
     quantization_config=bnb_config
 ).eval()
 
-def generate_answer(prompt: str) -> str:
-    """生成回答的核心函数，包含输入验证和模型推理"""
+# --------------------------
+# 核心修改点 1: 修改系统提示词，加入思考过程指令
+# --------------------------
+SYSTEM_PROMPT = """你是一个乐于助人的AI助手。
+请在回答问题之前，先进行深度的思维链分析。
+请务必将你的思考过程包裹在 <think> 和 </think> XML标签中，然后再输出最终的回答。
+例如：
+<think>
+这里需要分析用户的意图...
+第一步是...
+</think>
+这里是正式的回答内容。
+"""
+
+def generate_answer(prompt: str, history: list = None) -> str:
+    """
+    生成回答
+    :param prompt: 当前用户问题
+    :param history: 历史对话列表 [{"role": "user", "content": "..."}, ...]
+    """
     # 输入验证
     if not prompt.strip():
         return "请输入有效的问题！"
     if len(prompt) > MAX_PROMPT_LENGTH:
         return f"输入过长（当前{len(prompt)}字），请控制在{MAX_PROMPT_LENGTH}字以内"
     
+    # 初始化历史
+    if history is None:
+        history = []
+
     with model_lock:
         try:
-            # 构建对话模板
-            messages = [
-                {"role": "system", "content": "你是一个乐于助人的AI助手。"},
-                {"role": "user", "content": prompt}
-            ]
+            # --------------------------
+            # 核心修改点 2: 构建包含历史记录的消息列表
+            # --------------------------
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            
+            # 追加历史记录 (限制最近 10 轮，防止显存爆满)
+            # 假设 history 格式为 Django QuerySet 或 字典列表
+            for msg in history[-10:]: 
+                # 确保 role 是 model 识别的 user/assistant
+                role = "user" if msg.get('role') == "user" else "assistant"
+                messages.append({"role": role, "content": msg.get('content')})
+
+            # 追加当前问题
+            messages.append({"role": "user", "content": prompt})
             
             text = tokenizer.apply_chat_template(
                 messages,
@@ -86,9 +117,9 @@ def generate_answer(prompt: str) -> str:
             generated_ids = model.generate(
                 input_ids,
                 attention_mask=attention_mask,
-                max_new_tokens=512,
+                max_new_tokens=1024, # 增加长度以容纳思考过程
                 do_sample=True,
-                temperature=0.6,
+                temperature=0.7,     # 稍微提高温度以增加思维多样性
                 top_p=0.9,
                 repetition_penalty=1.05,
                 pad_token_id=tokenizer.eos_token_id
@@ -105,6 +136,5 @@ def generate_answer(prompt: str) -> str:
             traceback.print_exc()
             return f"生成出错：{str(e)}"
         finally:
-            # 确保显存清理
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
