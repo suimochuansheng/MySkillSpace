@@ -442,6 +442,9 @@ const handleSend = async () => {
     // 调用AI接口，传入sessionId
     const response = await aiAPI.sendQuestion(question, sessionId.value);
     
+    // ✅ 修复：收到响应后立即关闭加载动画
+    isLoading.value = false;
+    
     // 解析AI回答，分离思考过程和最终答案
     const { thinking, answer } = parseAiResponse(response.data || '');
     
@@ -483,6 +486,7 @@ const handleSend = async () => {
 
     ElMessage.error('AI对话失败，请稍后重试');
   } finally {
+    // 确保加载状态被关闭（防止异常情况）
     isLoading.value = false;
   }
 };
