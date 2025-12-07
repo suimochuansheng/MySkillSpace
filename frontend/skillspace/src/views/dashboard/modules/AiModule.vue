@@ -9,6 +9,26 @@
         <div class="ai-subtitle">
           <el-tag type="info" size="small">基于通义千问-7B</el-tag>
           <span class="powered-by">智能问答服务</span>
+          
+          <!-- 打字速度控制 -->
+          <el-popover placement="bottom" :width="250" trigger="click">
+            <template #reference>
+              <el-button size="small" text>
+                <el-icon><Setting /></el-icon>
+                设置
+              </el-button>
+            </template>
+            <div class="speed-control">
+              <div class="speed-label">打字速度：{{ typingSpeedLabel }}</div>
+              <el-slider 
+                v-model="typingSpeed" 
+                :min="10" 
+                :max="100" 
+                :step="10"
+                :marks="{ 10: '快', 50: '中', 100: '慢' }"
+              />
+            </div>
+          </el-popover>
         </div>
       </div>
     </el-card>
@@ -62,10 +82,43 @@
                 <el-icon><ChatDotRound /></el-icon>
               </el-avatar>
               <div class="message-content">
-                <div class="message-text" v-html="formatMarkdown(message.content)"></div>
+                <!-- AI思考过程（折叠展示） -->
+                <el-collapse v-if="message.thinking || message.thinkingFull" class="thinking-collapse">
+                  <el-collapse-item name="thinking">
+                    <template #title>
+                      <div class="thinking-header">
+                        <span>AI 思考过程</span>
+                        <el-tag v-if="message.isTyping && message.thinking && !message.content" size="small" type="info">正在思考...</el-tag>
+                      </div>
+                    </template>
+                    <div class="thinking-content" v-html="formatMarkdown(message.thinking)"></div>
+                  </el-collapse-item>
+                </el-collapse>
+                
+                <!-- AI最终回答 -->
+                <div class="message-text-wrapper">
+                  <div class="message-text" v-html="formatMarkdown(message.content)"></div>
+                  <!-- 打字中的光标效果 -->
+                  <span v-if="message.isTyping" class="typing-cursor">|</span>
+                </div>
+                
                 <div class="message-actions">
                   <span class="message-time">{{ message.time }}</span>
+                  
+                  <!-- 跳过打字动画按钮 -->
                   <el-button 
+                    v-if="message.isTyping"
+                    size="small" 
+                    text
+                    type="primary"
+                    @click="skipAllTyping(index, message)"
+                  >
+                    <el-icon><DArrowRight /></el-icon>
+                    跳过动画
+                  </el-button>
+                  
+                  <el-button 
+                    v-else
                     size="small" 
                     text 
                     @click="copyToClipboard(message.content)"
@@ -136,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, nextTick, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   ChatDotRound, 
@@ -144,9 +197,15 @@ import {
   User, 
   CopyDocument, 
   Delete, 
-  Promotion 
+  Promotion,
+  DArrowRight,
+  Setting
 } from '@element-plus/icons-vue';
 import { aiAPI } from '@/api';
+import { v4 as uuidv4 } from 'uuid';
+
+// 会话ID（使用localStorage持久化）
+const sessionId = ref('');
 
 // 对话历史记录
 const chatHistory = ref([]);
@@ -160,6 +219,20 @@ const isLoading = ref(false);
 // 聊天容器引用
 const chatContainerRef = ref(null);
 
+// 打字机效果相关
+const typingSpeed = ref(30); // 打字速度（毫秒/字符）
+const isTyping = ref(false); // 是否正在打字
+let typingTimer = null; // 打字计时器
+
+// 打字速度标签
+const typingSpeedLabel = computed(() => {
+  if (typingSpeed.value <= 20) return '极快';
+  if (typingSpeed.value <= 40) return '快';
+  if (typingSpeed.value <= 60) return '中等';
+  if (typingSpeed.value <= 80) return '较慢';
+  return '慢';  
+});
+
 // 快速提问选项
 const quickQuestions = ref([
   '介绍一下Python编程语言',
@@ -168,25 +241,145 @@ const quickQuestions = ref([
   '解释一下Vue.js框架'
 ]);
 
+// 初始化或获取sessionId
+const initSessionId = () => {
+  const storedSessionId = localStorage.getItem('ai_session_id');
+  if (storedSessionId) {
+    sessionId.value = storedSessionId;
+  } else {
+    // 生成新的UUID（需要安装uuid包：npm install uuid）
+    const newSessionId = uuidv4();
+    sessionId.value = newSessionId;
+    localStorage.setItem('ai_session_id', newSessionId);
+  }
+};
+
+// 加载历史对话记录
+const loadHistory = async () => {
+  if (!sessionId.value) return;
+  
+  try {
+    const response = await aiAPI.getHistory(sessionId.value);
+    if (response.code === 200 && response.data) {
+      // 转换后端数据格式为前端显示格式
+      chatHistory.value = response.data.map(record => ({
+        role: record.role,
+        content: record.content,
+        time: formatBackendTime(record.created_at)
+      }));
+      
+      // 滚动到底部
+      scrollToBottom();
+    }
+  } catch (error) {
+    console.error('加载历史记录失败:', error);
+    // 不显示错误提示，静默失败
+  }
+};
+
+// 格式化后端时间戳
+const formatBackendTime = (timestamp) => {
+  const date = new Date(timestamp);
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+};
+
 // 格式化时间
 const formatTime = () => {
   const now = new Date();
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 };
 
+// 解析AI回答，提取思考过程和最终回答
+const parseAiResponse = (text) => {
+  if (!text) return { thinking: '', answer: '' };
+  
+  // 使用正则表达式提取 <think>...</think> 标签内容
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
+  const match = text.match(thinkRegex);
+  
+  if (match) {
+    // 提取思考过程
+    const thinking = match[1].trim();
+    // 提取最终回答（去除think标签后的内容）
+    const answer = text.replace(thinkRegex, '').trim();
+    return { thinking, answer };
+  }
+  
+  // 如果没有think标签，全部作为回答
+  return { thinking: '', answer: text };
+};
+
+// 打字机效果：逐字显示内容
+const typeWriter = async (fullText, messageIndex, field = 'content') => {
+  return new Promise((resolve) => {
+    let currentIndex = 0;
+    isTyping.value = true;
+    
+    const type = () => {
+      if (currentIndex <= fullText.length) {
+        // 更新消息内容
+        chatHistory.value[messageIndex][field] = fullText.substring(0, currentIndex);
+        currentIndex++;
+        
+        // 滚动到底部（打字时持续滚动）
+        scrollToBottom();
+        
+        // 继续打字
+        typingTimer = setTimeout(type, typingSpeed.value);
+      } else {
+        // 打字完成
+        isTyping.value = false;
+        clearTimeout(typingTimer);
+        resolve();
+      }
+    };
+    
+    type();
+  });
+};
+
+// 停止打字机效果（用户可以跳过动画）
+const skipTyping = (messageIndex, fullContent, field = 'content') => {
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+    typingTimer = null;
+  }
+  isTyping.value = false;
+  chatHistory.value[messageIndex][field] = fullContent;
+  scrollToBottom();
+};
+
+// 跳过所有打字动画（同时显示思考和回答）
+const skipAllTyping = (messageIndex, message) => {
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+    typingTimer = null;
+  }
+  isTyping.value = false;
+  
+  // 直接显示完整内容
+  if (message.thinkingFull) {
+    chatHistory.value[messageIndex].thinking = message.thinkingFull;
+  }
+  if (message.answerFull) {
+    chatHistory.value[messageIndex].content = message.answerFull;
+  }
+  chatHistory.value[messageIndex].isTyping = false;
+  scrollToBottom();
+};
+
 // 简单的Markdown格式化（将换行转换为<br>）
 const formatMarkdown = (text) => {
   if (!text) return '';
   
-  // ✅ 修复点12：前端额外清理特殊字符
-  // 1. 移除可能没有被后端过滤的控制符
+  // 清理特殊字符
   text = text.replace(/<\|[^|]+\|>/g, '');
   
-  // 2. 移除异常的图片标签
+  // 移除异常的图片标签
   text = text.replace(/!\[.*?\]\(.*?\)/g, '');
   text = text.replace(/<img[^>]*>/gi, '');
   
-  // 3. 正常的Markdown格式化
+  // 正常的Markdown格式化
   return text
     .replace(/\n/g, '<br>')
     .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
@@ -239,7 +432,6 @@ const handleSend = async () => {
   // 设置加载状态
   isLoading.value = true;
   
-  // ✅ 修复点6：显示AI正在处理的提示，避免用户焦虑
   ElMessage.info({
     message: '🤖 AI正在思考中，首次请求可能需要等待约30秒...',
     duration: 5000,
@@ -247,18 +439,37 @@ const handleSend = async () => {
   });
 
   try {
-    // 调用AI接口
-    const response = await aiAPI.sendQuestion(question);
+    // 调用AI接口，传入sessionId
+    const response = await aiAPI.sendQuestion(question, sessionId.value);
     
-    // 添加AI回答到历史
+    // 解析AI回答，分离思考过程和最终答案
+    const { thinking, answer } = parseAiResponse(response.data || '');
+    
+    // 先添加一个空的AI消息占位符
+    const messageIndex = chatHistory.value.length;
     chatHistory.value.push({
       role: 'assistant',
-      content: response.data || '抱歉，我暂时无法回答这个问题。',
-      time: formatTime()
+      content: '', // 初始为空，等待打字机填充
+      thinking: '', // 初始为空
+      thinkingFull: thinking, // 保存完整思考过程
+      answerFull: answer || '抱歉，我暂时无法回答这个问题。', // 保存完整回答
+      time: formatTime(),
+      isTyping: true // 标记正在打字
     });
 
     // 滚动到底部
     scrollToBottom();
+    
+    // 先显示思考过程（如果有）
+    if (thinking) {
+      await typeWriter(thinking, messageIndex, 'thinking');
+    }
+    
+    // 再显示最终回答
+    await typeWriter(answer || '抱歉，我暂时无法回答这个问题。', messageIndex, 'content');
+    
+    // 打字完成，移除打字标记
+    chatHistory.value[messageIndex].isTyping = false;
 
   } catch (error) {
     console.error('AI对话失败:', error);
@@ -290,7 +501,11 @@ const handleClear = async () => {
     );
 
     chatHistory.value = [];
-    ElMessage.success('对话记录已清空');
+    // 生成新的session_id
+    const newSessionId = uuidv4();
+    sessionId.value = newSessionId;
+    localStorage.setItem('ai_session_id', newSessionId);
+    ElMessage.success('对话记录已清空，已创建新会话');
   } catch {
     // 用户取消
   }
@@ -307,7 +522,10 @@ const copyToClipboard = (text) => {
 
 // 组件挂载时的初始化
 onMounted(() => {
-  // 可以在这里加载历史对话记录（如果需要持久化）
+  // 初始化session_id
+  initSessionId();
+  // 加载历史对话记录
+  loadHistory();
 });
 </script>
 
@@ -352,6 +570,18 @@ onMounted(() => {
 .powered-by {
   font-size: 12px;
   color: #909399;
+}
+
+/* 速度控制样式 */
+.speed-control {
+  padding: 12px 0;
+}
+
+.speed-label {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
 
 /* 聊天历史区域 */
@@ -479,22 +709,29 @@ onMounted(() => {
   flex: 0 1 auto;
   /* 自适应宽度：不放大，可缩小，基于内容 */
   max-width: min(70%, 600px);
-  /* 响应式最大宽度：取70%和600px中较小值 */
+  /* 响应式最大宽度：取70%噄600px中较小值 */
   min-width: 100px;
   /* 最小宽度，避免过窄 */
 }
 
-.ai-message .message-text {
+/* AI消息文本容器 */
+.message-text-wrapper {
+  display: inline-flex;
+  align-items: flex-end;
   background: #f4f4f5;
   color: #303133;
   padding: 12px 16px;
   border-radius: 12px 12px 12px 0;
   word-wrap: break-word;
   word-break: break-word;
-  /* 确保长单词换行 */
   line-height: 1.6;
   width: 100%;
   box-sizing: border-box;
+}
+
+.ai-message .message-text {
+  flex: 1;
+  display: inline;
 }
 
 .ai-message .message-text :deep(pre) {
@@ -512,6 +749,70 @@ onMounted(() => {
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Courier New', monospace;
+}
+
+/* 思考过程折叠区域样式 */
+.thinking-collapse {
+  margin-bottom: 12px;
+}
+
+.thinking-collapse :deep(.el-collapse-item__header) {
+  background-color: #f5f7fa;
+  color: #606266;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.thinking-collapse :deep(.el-collapse-item__wrap) {
+  background-color: #fafafa;
+  border: 1px solid #e4e7ed;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.thinking-content {
+  padding: 12px;
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: #fafafa;
+}
+
+.thinking-content :deep(br) {
+  display: block;
+  content: "";
+  margin: 4px 0;
+}
+
+/* 思考过程标题区域 */
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* 打字机光标效果 */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #409EFF;
+  margin-left: 2px;
+  animation: blink 1s infinite;
+  vertical-align: text-bottom;
+  flex-shrink: 0;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
 }
 
 /* 消息时间和操作 */
