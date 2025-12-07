@@ -4,11 +4,13 @@ import bitsandbytes as bnb
 from transformers import (
     AutoTokenizer, 
     AutoModelForCausalLM,
-    BitsAndBytesConfig
+    BitsAndBytesConfig,
+    TextIteratorStreamer
 )
 from modelscope import snapshot_download
-from threading import Lock
-import traceback  # 移至顶部统一导入
+from threading import Lock, Thread
+import traceback
+import os
 
 model_lock = Lock()
 
@@ -20,53 +22,96 @@ MODEL_CACHE_DIR = "./qwen_model_cache"
 DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 MAX_PROMPT_LENGTH = 2000  # 与API限制保持一致
 
+# 全局变量：模型和tokenizer
+model = None
+tokenizer = None
+model_loaded = False
+
+# 环境变量控制是否启用模型加载（默认启用真实模型）
+ENABLE_MODEL_LOADING = os.getenv('ENABLE_AI_MODEL', 'true').lower() == 'true'
+
 print(f"当前运行环境：torch={torch.__version__} | bitsandbytes={bnb.__version__} | CUDA={torch.version.cuda}")
+print(f"AI模型加载开关：{'启用（后台线程加载）' if ENABLE_MODEL_LOADING else '禁用'}")
 
-# 下载模型
-model_dir = snapshot_download(
-    MODEL_NAME,
-    cache_dir=MODEL_CACHE_DIR,
-    revision="master"
-)
+def load_model_on_startup():
+    """
+    在应用启动时加载模型（由apps.py调用）
+    此函数在后台线程中运行，不会阻塞Django启动
+    """
+    global model, tokenizer, model_loaded
+    
+    if not ENABLE_MODEL_LOADING:
+        print("提示：AI模型加载已禁用，如需启用请设置环境变量 ENABLE_AI_MODEL=true")
+        return
+    
+    print("🔄 开始加载 AI 模型...")
+    try:
+        # 下载模型
+        model_dir = snapshot_download(
+            MODEL_NAME,
+            cache_dir=MODEL_CACHE_DIR,
+            revision="master"
+        )
+        
+        # 加载tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_dir,
+            trust_remote_code=True,
+            padding_side="right",
+            use_fast=False
+        )
+        
+        # 量化配置
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float32,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4"
+        )
+        
+        print("⏳ 正在加载模型 (FP32 Compute Mode)...")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_dir,
+            device_map=DEVICE,
+            trust_remote_code=True,
+            quantization_config=bnb_config
+        ).eval()
+        
+        model_loaded = True
+        print("✅ 模型加载完成！AI功能已就绪")
+        
+    except Exception as e:
+        print(f"❌ 模型加载失败：{str(e)}")
+        traceback.print_exc()
+        model_loaded = False
 
-# 加载tokenizer
-tokenizer = AutoTokenizer.from_pretrained(
-    model_dir,
-    trust_remote_code=True,
-    padding_side="right",  # 确保padding在右侧
-    use_fast=False
-)
-
-# --------------------------
-# 量化配置
-# --------------------------
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float32,  # 使用FP32避免溢出
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
-)
-
-print("正在加载模型 (FP32 Compute Mode)...")
-model = AutoModelForCausalLM.from_pretrained(
-    model_dir,
-    device_map=DEVICE,
-    trust_remote_code=True,
-    quantization_config=bnb_config
-).eval()
+def get_model():
+    """
+    获取已加载的模型和tokenizer
+    如果模型未加载或加载失败，抛出异常
+    """
+    if not ENABLE_MODEL_LOADING:
+        raise RuntimeError("AI模型加载未启用，请设置环境变量 ENABLE_AI_MODEL=true")
+    
+    if not model_loaded or model is None or tokenizer is None:
+        raise RuntimeError("模型未成功加载，请检查启动日志")
+    
+    return model, tokenizer
 
 # --------------------------
 # 核心修改点 1: 修改系统提示词，加入思考过程指令
 # --------------------------
 SYSTEM_PROMPT = """你是一个乐于助人的AI助手。
-请在回答问题之前，先进行深度的思维链分析。
-请务必将你的思考过程包裹在 <think> 和 </think> XML标签中，然后再输出最终的回答。
-例如：
-<think>
-这里需要分析用户的意图...
-第一步是...
-</think>
-这里是正式的回答内容。
+请按照以下格式回答用户的问题：
+
+思考：<在这里写出你的思考过程，包括分析用户意图、问题拆解、推理步骤等>
+
+答案：<在这里给出最终的完整答案>
+
+注意：
+1. 必须严格按照上述格式输出
+2. 思考部分要详细展示你的推理过程
+3. 答案部分要清晰、准确、完整
 """
 
 def generate_answer(prompt: str, history: list = None) -> str:
@@ -84,52 +129,54 @@ def generate_answer(prompt: str, history: list = None) -> str:
     # 初始化历史
     if history is None:
         history = []
+    
+    # 获取已加载的模型
+    try:
+        loaded_model, loaded_tokenizer = get_model()
+    except RuntimeError as e:
+        return f"模型未启用：{str(e)}"
 
     with model_lock:
         try:
-            # --------------------------
-            # 核心修改点 2: 构建包含历史记录的消息列表
-            # --------------------------
+            # 构建包含历史记录的消息列表
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             
             # 追加历史记录 (限制最近 10 轮，防止显存爆满)
-            # 假设 history 格式为 Django QuerySet 或 字典列表
             for msg in history[-10:]: 
-                # 确保 role 是 model 识别的 user/assistant
                 role = "user" if msg.get('role') == "user" else "assistant"
                 messages.append({"role": role, "content": msg.get('content')})
 
             # 追加当前问题
             messages.append({"role": "user", "content": prompt})
             
-            text = tokenizer.apply_chat_template(
+            text = loaded_tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
             )
             
             # 编码输入
-            encoding = tokenizer([text], return_tensors="pt")
+            encoding = loaded_tokenizer([text], return_tensors="pt")
             input_ids = encoding.input_ids.to(DEVICE)
             attention_mask = encoding.attention_mask.to(DEVICE)
             
             # 生成配置
-            generated_ids = model.generate(
+            generated_ids = loaded_model.generate(
                 input_ids,
                 attention_mask=attention_mask,
-                max_new_tokens=1024, # 增加长度以容纳思考过程
+                max_new_tokens=1024,
                 do_sample=True,
-                temperature=0.7,     # 稍微提高温度以增加思维多样性
+                temperature=0.7,
                 top_p=0.9,
                 repetition_penalty=1.05,
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=loaded_tokenizer.eos_token_id
             )
             
             # 解码输出
             generated_ids = [
                 output_ids[len(input_ids):] for input_ids, output_ids in zip(input_ids, generated_ids)
             ]
-            answer = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            answer = loaded_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
             return answer
         
         except Exception as e:
@@ -138,3 +185,83 @@ def generate_answer(prompt: str, history: list = None) -> str:
         finally:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+
+def stream_generate_answer(prompt: str, history: list = None):
+    """
+    流式生成回答的生成器函数
+    Yields:
+        dict: {"token": "片段", "type": "thinking" | "answer"}
+    """
+    if history is None:
+        history = []
+    
+    # 获取已加载的模型
+    try:
+        loaded_model, loaded_tokenizer = get_model()
+    except RuntimeError as e:
+        yield {"token": f"模型未启用：{str(e)}", "type": "answer"}
+        return
+    
+    # 1. 构建 Prompt
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for msg in history[-10:]:
+        role = "user" if msg.get('role') == "user" else "assistant"
+        messages.append({"role": role, "content": msg.get('content')})
+    messages.append({"role": "user", "content": prompt})
+    
+    text = loaded_tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    
+    inputs = loaded_tokenizer([text], return_tensors="pt").to(DEVICE)
+    
+    # 2. 初始化流式迭代器
+    streamer = TextIteratorStreamer(
+        loaded_tokenizer, 
+        skip_prompt=True,
+        skip_special_tokens=True
+    )
+    
+    # 3. 配置生成参数
+    generation_kwargs = dict(
+        inputs,
+        streamer=streamer,
+        max_new_tokens=1024,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.9,
+        pad_token_id=loaded_tokenizer.eos_token_id
+    )
+    
+    # 4. 在独立线程中启动生成
+    thread = Thread(target=loaded_model.generate, kwargs=generation_kwargs)
+    thread.start()
+    
+    # 5. 主线程从 streamer 中读取 token
+    current_type = "thinking" 
+    full_content = ""
+    has_started_thinking = False
+    
+    for new_text in streamer:
+        full_content += new_text
+        
+        # 简单的状态切换逻辑
+        if "<think>" in new_text:
+            has_started_thinking = True
+            
+        if "</think>" in new_text:
+            current_type = "answer"
+            # 可以选择不把 </think> 推送给前端，这里为了简单直接推送
+        
+        # 如果没有检测到 <think> 且内容已经很长，可能模型没遵循指令，强制切为 answer
+        if not has_started_thinking and len(full_content) > 20 and current_type == "thinking":
+            if "<think>" not in full_content:
+                current_type = "answer"
+
+        yield {
+            "token": new_text,
+            "type": current_type
+        }
