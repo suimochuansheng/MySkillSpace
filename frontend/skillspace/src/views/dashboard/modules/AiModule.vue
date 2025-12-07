@@ -172,16 +172,26 @@
             <el-icon><Delete /></el-icon>
             清空对话
           </el-button>
-          <el-button 
-            type="primary" 
-            @click="handleSend"
-            :loading="isLoading"
-            :disabled="!userInput.trim()"
-            size="default"
-          >
-            <el-icon v-if="!isLoading"><Promotion /></el-icon>
-            {{ isLoading ? '正在思考...' : '发送 (Ctrl+Enter)' }}
-          </el-button>
+          <div class="right-buttons">
+            <el-button 
+              v-if="isLoading"
+              type="danger"
+              @click="handleStop"
+              size="default"
+            >
+              停止
+            </el-button>
+            <el-button 
+              type="primary" 
+              @click="handleSend"
+              :loading="isLoading"
+              :disabled="!userInput.trim()"
+              size="default"
+            >
+              <el-icon v-if="!isLoading"><Promotion /></el-icon>
+              {{ isLoading ? '正在思考...' : '发送 (Ctrl+Enter)' }}
+            </el-button>
+          </div>
         </div>
       </div>
     </el-card>
@@ -215,6 +225,9 @@ const userInput = ref('');
 
 // 加载状态
 const isLoading = ref(false);
+
+// 流式请求控制器（用于中断请求）
+const abortController = ref(null);
 
 // 聊天容器引用
 const chatContainerRef = ref(null);
@@ -289,11 +302,32 @@ const formatTime = () => {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 };
 
-// 解析AI回答，提取思考过程和最终回答
+// 解析模型输出，提取思考过程和最终答案
+const parseModelOutput = (output) => {
+  if (!output) return { thought: '', answer: '' };
+  
+  // 匹配“思考：”到“答案：”之间的内容
+  const thoughtMatch = output.match(/思考：([\s\S]*?)\n+答案：/);
+  // 匹配“答案：”之后的所有内容
+  const answerMatch = output.match(/答案：([\s\S]*)/);
+  
+  return {
+    thought: thoughtMatch ? thoughtMatch[1].trim() : '',
+    answer: answerMatch ? answerMatch[1].trim() : output
+  };
+};
+
+// 兼容旧格式：解析AI回答，提取思考过程和最终回答（兼容<think>标签格式）
 const parseAiResponse = (text) => {
   if (!text) return { thinking: '', answer: '' };
   
-  // 使用正则表达式提取 <think>...</think> 标签内容
+  // 优先尝试新格式：“思考：”和“答案：”
+  const parsed = parseModelOutput(text);
+  if (parsed.thought || parsed.answer !== text) {
+    return { thinking: parsed.thought, answer: parsed.answer };
+  }
+  
+  // 回退到旧格式：<think>标签
   const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
   const match = text.match(thinkRegex);
   
@@ -431,6 +465,7 @@ const handleSend = async () => {
 
   // 设置加载状态
   isLoading.value = true;
+  abortController.value = new AbortController();
   
   ElMessage.info({
     message: '🤖 AI正在思考中，首次请求可能需要等待约30秒...',
@@ -438,56 +473,61 @@ const handleSend = async () => {
     showClose: true
   });
 
+  // 先添加一个AI消息占位符（用于流式逐字渲染）
+  const messageIndex = chatHistory.value.length;
+  chatHistory.value.push({
+    role: 'assistant',
+    content: '',
+    thinking: '',
+    time: formatTime(),
+    isTyping: true
+  });
+
   try {
-    // 调用AI接口，传入sessionId
-    const response = await aiAPI.sendQuestion(question, sessionId.value);
-    
-    // ✅ 修复：收到响应后立即关闭加载动画
-    isLoading.value = false;
-    
-    // 解析AI回答，分离思考过程和最终答案
-    const { thinking, answer } = parseAiResponse(response.data || '');
-    
-    // 先添加一个空的AI消息占位符
-    const messageIndex = chatHistory.value.length;
-    chatHistory.value.push({
-      role: 'assistant',
-      content: '', // 初始为空，等待打字机填充
-      thinking: '', // 初始为空
-      thinkingFull: thinking, // 保存完整思考过程
-      answerFull: answer || '抱歉，我暂时无法回答这个问题。', // 保存完整回答
-      time: formatTime(),
-      isTyping: true // 标记正在打字
-    });
-
-    // 滚动到底部
-    scrollToBottom();
-    
-    // 先显示思考过程（如果有）
-    if (thinking) {
-      await typeWriter(thinking, messageIndex, 'thinking');
-    }
-    
-    // 再显示最终回答
-    await typeWriter(answer || '抱歉，我暂时无法回答这个问题。', messageIndex, 'content');
-    
-    // 打字完成，移除打字标记
-    chatHistory.value[messageIndex].isTyping = false;
-
+    // 流式请求：逐段读取并更新UI
+    await aiAPI.sendQuestionStream(
+      question,
+      sessionId.value,
+      (evt) => {
+        if (!evt || !evt.type) return;
+        if (evt.type === 'thinking') {
+          chatHistory.value[messageIndex].thinking += (evt.token || '');
+        } else if (evt.type === 'answer') {
+          chatHistory.value[messageIndex].content += (evt.token || '');
+        } else if (evt.type === 'error') {
+          const errText = (evt.text ?? evt.msg ?? '未知错误');
+          chatHistory.value[messageIndex].content = `抱歉，出现错误：${errText}`;
+          chatHistory.value[messageIndex].isTyping = false;
+        } else if (evt.type === 'finish') {
+          // 结束标记
+          chatHistory.value[messageIndex].isTyping = false;
+        }
+        scrollToBottom();
+      },
+      abortController.value.signal
+    );
   } catch (error) {
     console.error('AI对话失败:', error);
-    
-    // 添加错误消息
-    chatHistory.value.push({
-      role: 'assistant',
-      content: `抱歉，处理您的问题时出现错误：${error.message || '未知错误'}`,
-      time: formatTime()
-    });
-
-    ElMessage.error('AI对话失败，请稍后重试');
+    // 取消或异常时提示
+    const msg = error.name === 'AbortError' ? '请求已停止' : `抱歉，处理您的问题时出现错误：${error.message || '未知错误'}`;
+    if (chatHistory.value[messageIndex]) {
+      chatHistory.value[messageIndex].content = msg;
+      chatHistory.value[messageIndex].isTyping = false;
+    } else {
+      chatHistory.value.push({
+        role: 'assistant',
+        content: msg,
+        time: formatTime()
+      });
+    }
+    ElMessage.error(msg);
   } finally {
-    // 确保加载状态被关闭（防止异常情况）
+    // 结束状态处理
     isLoading.value = false;
+    if (chatHistory.value[messageIndex]) {
+      chatHistory.value[messageIndex].isTyping = false;
+    }
+    abortController.value = null;
   }
 };
 
@@ -524,6 +564,18 @@ const copyToClipboard = (text) => {
   });
 };
 
+// 组件挂载时的初始化
+// 主动停止当前请求（中断流式渲染）
+const handleStop = () => {
+  try {
+    if (abortController.value) {
+      abortController.value.abort();
+    }
+    isTyping.value = false;
+    isLoading.value = false;
+    ElMessage.info('已停止当前请求');
+  } catch {}
+};
 // 组件挂载时的初始化
 onMounted(() => {
   // 初始化session_id
@@ -889,6 +941,12 @@ onMounted(() => {
 .input-actions {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.right-buttons {
+  display: flex;
+  gap: 12px;
   align-items: center;
 }
 

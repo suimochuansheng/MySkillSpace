@@ -46,9 +46,12 @@ class ChatRequestSerializer(serializers.Serializer):
     )
     session_id = serializers.CharField(
         required=False,
+        allow_blank=True, 
         max_length=100,
         help_text="会话ID，如未提供则自动生成"
     )
+    # 新增 stream 字段，默认为 True (流式)
+    stream = serializers.BooleanField(default=True, required=False)
     
     def validate_prompt(self, value):
         """验证问题内容"""

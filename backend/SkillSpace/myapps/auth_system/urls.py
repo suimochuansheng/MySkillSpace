@@ -31,7 +31,7 @@ urlpatterns = [
     
     # 获取当前用户信息
     # GET /api/auth/me/
-    # path('me/', CurrentUserView.as_view(), name='current-user'),
+    path('me/', CurrentUserView.as_view(), name='current-user'),
     
     # 修改密码
     # POST /api/auth/password/change/
