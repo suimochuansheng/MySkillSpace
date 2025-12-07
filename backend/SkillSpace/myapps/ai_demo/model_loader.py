@@ -240,27 +240,46 @@ def stream_generate_answer(prompt: str, history: list = None):
     thread = Thread(target=loaded_model.generate, kwargs=generation_kwargs)
     thread.start()
     
-    # 5. 主线程从 streamer 中读取 token
-    current_type = "thinking" 
+    # 5. 主线程从 streamer 中读取 token，并根据"思考："和"答案："标记切换类型
+    current_type = "thinking"  # 默认先输出思考过程
     full_content = ""
-    has_started_thinking = False
     
     for new_text in streamer:
         full_content += new_text
         
-        # 简单的状态切换逻辑
-        if "<think>" in new_text:
-            has_started_thinking = True
+        # 检测是否遇到"答案："标记，切换到answer类型
+        if "答案：" in full_content and current_type == "thinking":
+            # 找到"答案："的位置
+            answer_pos = full_content.find("答案：")
             
-        if "</think>" in new_text:
+            # 如果当前token跨越了"答案："分界线，需要分段处理
+            before_answer = full_content[:answer_pos + len("答案：")]
+            current_len_before_token = len(full_content) - len(new_text)
+            
+            if current_len_before_token < answer_pos + len("答案："):
+                # 当前token包含了"答案："标记
+                # 将"答案："之前的部分作为thinking
+                thinking_part_len = answer_pos + len("答案：") - current_len_before_token
+                if thinking_part_len > 0 and thinking_part_len <= len(new_text):
+                    thinking_part = new_text[:thinking_part_len]
+                    answer_part = new_text[thinking_part_len:]
+                    
+                    # 先发送thinking部分（包含"答案："标记）
+                    if thinking_part:
+                        yield {"token": thinking_part, "type": "thinking"}
+                    
+                    # 切换类型
+                    current_type = "answer"
+                    
+                    # 发送answer部分
+                    if answer_part:
+                        yield {"token": answer_part, "type": "answer"}
+                    continue
+            
+            # 切换类型（适用于"答案："已经在之前的token中完整出现的情况）
             current_type = "answer"
-            # 可以选择不把 </think> 推送给前端，这里为了简单直接推送
         
-        # 如果没有检测到 <think> 且内容已经很长，可能模型没遵循指令，强制切为 answer
-        if not has_started_thinking and len(full_content) > 20 and current_type == "thinking":
-            if "<think>" not in full_content:
-                current_type = "answer"
-
+        # 正常发送token
         yield {
             "token": new_text,
             "type": current_type
