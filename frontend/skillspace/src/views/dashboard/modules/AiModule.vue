@@ -9,26 +9,6 @@
         <div class="ai-subtitle">
           <el-tag type="info" size="small">基于通义千问-7B</el-tag>
           <span class="powered-by">智能问答服务</span>
-          
-          <!-- 打字速度控制 -->
-          <el-popover placement="bottom" :width="250" trigger="click">
-            <template #reference>
-              <el-button size="small" text>
-                <el-icon><Setting /></el-icon>
-                设置
-              </el-button>
-            </template>
-            <div class="speed-control">
-              <div class="speed-label">打字速度：{{ typingSpeedLabel }}</div>
-              <el-slider 
-                v-model="typingSpeed" 
-                :min="10" 
-                :max="100" 
-                :step="10"
-                :marks="{ 10: '快', 50: '中', 100: '慢' }"
-              />
-            </div>
-          </el-popover>
         </div>
       </div>
     </el-card>
@@ -98,27 +78,13 @@
                 <!-- AI最终回答 -->
                 <div class="message-text-wrapper">
                   <div class="message-text" v-html="formatMarkdown(message.content)"></div>
-                  <!-- 打字中的光标效果 -->
                   <span v-if="message.isTyping" class="typing-cursor">|</span>
                 </div>
                 
                 <div class="message-actions">
                   <span class="message-time">{{ message.time }}</span>
-                  
-                  <!-- 跳过打字动画按钮 -->
                   <el-button 
-                    v-if="message.isTyping"
-                    size="small" 
-                    text
-                    type="primary"
-                    @click="skipAllTyping(index, message)"
-                  >
-                    <el-icon><DArrowRight /></el-icon>
-                    跳过动画
-                  </el-button>
-                  
-                  <el-button 
-                    v-else
+                    v-if="!message.isTyping"
                     size="small" 
                     text 
                     @click="copyToClipboard(message.content)"
@@ -207,9 +173,7 @@ import {
   User, 
   CopyDocument, 
   Delete, 
-  Promotion,
-  DArrowRight,
-  Setting
+  Promotion
 } from '@element-plus/icons-vue';
 import { aiAPI } from '@/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -231,20 +195,6 @@ const abortController = ref(null);
 
 // 聊天容器引用
 const chatContainerRef = ref(null);
-
-// 打字机效果相关
-const typingSpeed = ref(30); // 打字速度（毫秒/字符）
-const isTyping = ref(false); // 是否正在打字
-let typingTimer = null; // 打字计时器
-
-// 打字速度标签
-const typingSpeedLabel = computed(() => {
-  if (typingSpeed.value <= 20) return '极快';
-  if (typingSpeed.value <= 40) return '快';
-  if (typingSpeed.value <= 60) return '中等';
-  if (typingSpeed.value <= 80) return '较慢';
-  return '慢';  
-});
 
 // 快速提问选项
 const quickQuestions = ref([
@@ -306,9 +256,9 @@ const formatTime = () => {
 const parseModelOutput = (output) => {
   if (!output) return { thought: '', answer: '' };
   
-  // 匹配“思考：”到“答案：”之间的内容
-  const thoughtMatch = output.match(/思考：([\s\S]*?)\n+答案：/);
-  // 匹配“答案：”之后的所有内容
+  // 匹配"思考："到"答案："之间的内容
+  const thoughtMatch = output.match(/思考：([\s\S]*?)(?=\n*答案：|$)/);
+  // 匹配"答案："之后的所有内容
   const answerMatch = output.match(/答案：([\s\S]*)/);
   
   return {
@@ -317,90 +267,7 @@ const parseModelOutput = (output) => {
   };
 };
 
-// 兼容旧格式：解析AI回答，提取思考过程和最终回答（兼容<think>标签格式）
-const parseAiResponse = (text) => {
-  if (!text) return { thinking: '', answer: '' };
-  
-  // 优先尝试新格式：“思考：”和“答案：”
-  const parsed = parseModelOutput(text);
-  if (parsed.thought || parsed.answer !== text) {
-    return { thinking: parsed.thought, answer: parsed.answer };
-  }
-  
-  // 回退到旧格式：<think>标签
-  const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
-  const match = text.match(thinkRegex);
-  
-  if (match) {
-    // 提取思考过程
-    const thinking = match[1].trim();
-    // 提取最终回答（去除think标签后的内容）
-    const answer = text.replace(thinkRegex, '').trim();
-    return { thinking, answer };
-  }
-  
-  // 如果没有think标签，全部作为回答
-  return { thinking: '', answer: text };
-};
 
-// 打字机效果：逐字显示内容
-const typeWriter = async (fullText, messageIndex, field = 'content') => {
-  return new Promise((resolve) => {
-    let currentIndex = 0;
-    isTyping.value = true;
-    
-    const type = () => {
-      if (currentIndex <= fullText.length) {
-        // 更新消息内容
-        chatHistory.value[messageIndex][field] = fullText.substring(0, currentIndex);
-        currentIndex++;
-        
-        // 滚动到底部（打字时持续滚动）
-        scrollToBottom();
-        
-        // 继续打字
-        typingTimer = setTimeout(type, typingSpeed.value);
-      } else {
-        // 打字完成
-        isTyping.value = false;
-        clearTimeout(typingTimer);
-        resolve();
-      }
-    };
-    
-    type();
-  });
-};
-
-// 停止打字机效果（用户可以跳过动画）
-const skipTyping = (messageIndex, fullContent, field = 'content') => {
-  if (typingTimer) {
-    clearTimeout(typingTimer);
-    typingTimer = null;
-  }
-  isTyping.value = false;
-  chatHistory.value[messageIndex][field] = fullContent;
-  scrollToBottom();
-};
-
-// 跳过所有打字动画（同时显示思考和回答）
-const skipAllTyping = (messageIndex, message) => {
-  if (typingTimer) {
-    clearTimeout(typingTimer);
-    typingTimer = null;
-  }
-  isTyping.value = false;
-  
-  // 直接显示完整内容
-  if (message.thinkingFull) {
-    chatHistory.value[messageIndex].thinking = message.thinkingFull;
-  }
-  if (message.answerFull) {
-    chatHistory.value[messageIndex].content = message.answerFull;
-  }
-  chatHistory.value[messageIndex].isTyping = false;
-  scrollToBottom();
-};
 
 // 简单的Markdown格式化（将换行转换为<br>）
 const formatMarkdown = (text) => {
@@ -485,15 +352,41 @@ const handleSend = async () => {
 
   try {
     // 流式请求：逐段读取并更新UI
+    let thinkingBuffer = '';  // 缓存思考过程
+    let answerBuffer = '';    // 缓存答案内容
+    
     await aiAPI.sendQuestionStream(
       question,
       sessionId.value,
       (evt) => {
         if (!evt || !evt.type) return;
+        
         if (evt.type === 'thinking') {
-          chatHistory.value[messageIndex].thinking += (evt.token || '');
+          // 累积思考内容
+          thinkingBuffer += (evt.token || '');
+          
+          // 移除"思考："标记（只在开头移除一次）
+          let displayThinking = thinkingBuffer;
+          if (displayThinking.startsWith('思考：')) {
+            displayThinking = displayThinking.substring(3);
+          }
+          // 移除末尾的"答案："标记（如果存在）
+          displayThinking = displayThinking.replace(/\n*答案：$/, '');
+          
+          chatHistory.value[messageIndex].thinking = displayThinking.trim();
+          
         } else if (evt.type === 'answer') {
-          chatHistory.value[messageIndex].content += (evt.token || '');
+          // 累积答案内容
+          answerBuffer += (evt.token || '');
+          
+          // 移除"答案："标记（只在开头移除一次）
+          let displayAnswer = answerBuffer;
+          if (displayAnswer.startsWith('答案：')) {
+            displayAnswer = displayAnswer.substring(3);
+          }
+          
+          chatHistory.value[messageIndex].content = displayAnswer.trim();
+          
         } else if (evt.type === 'error') {
           const errText = (evt.text ?? evt.msg ?? '未知错误');
           chatHistory.value[messageIndex].content = `抱歉，出现错误：${errText}`;
@@ -564,18 +457,17 @@ const copyToClipboard = (text) => {
   });
 };
 
-// 组件挂载时的初始化
 // 主动停止当前请求（中断流式渲染）
 const handleStop = () => {
   try {
     if (abortController.value) {
       abortController.value.abort();
     }
-    isTyping.value = false;
     isLoading.value = false;
     ElMessage.info('已停止当前请求');
   } catch {}
 };
+
 // 组件挂载时的初始化
 onMounted(() => {
   // 初始化session_id
@@ -626,18 +518,6 @@ onMounted(() => {
 .powered-by {
   font-size: 12px;
   color: #909399;
-}
-
-/* 速度控制样式 */
-.speed-control {
-  padding: 12px 0;
-}
-
-.speed-label {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 12px;
-  font-weight: 500;
 }
 
 /* 聊天历史区域 */
