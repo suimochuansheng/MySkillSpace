@@ -109,6 +109,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
+import { roleManagement, menuManagement } from '@/api/auth';
 
 // 数据状态
 const loading = ref(false);
@@ -152,31 +153,27 @@ const currentRoleId = ref(null);
 const fetchRoleList = async () => {
   loading.value = true;
   try {
-    // TODO: 调用后端API
-    // const response = await roleAPI.getList(searchForm, pagination);
-    // roleList.value = response.data;
-    // pagination.total = response.total;
+    const params = {
+      ...searchForm,
+      page: pagination.page,
+      page_size: pagination.pageSize
+    };
+    const response = await roleManagement.getList(params);
     
-    // 模拟数据
-    roleList.value = [
-      {
-        id: 1,
-        name: '管理员',
-        code: 'admin',
-        remark: '系统管理员，拥有所有权限',
-        create_time: '2025-01-01 10:00:00'
-      },
-      {
-        id: 2,
-        name: '普通用户',
-        code: 'common',
-        remark: '普通用户角色',
-        create_time: '2025-01-01 10:00:00'
-      }
-    ];
-    pagination.total = 2;
+    // DRF标准分页格式处理
+    if (response.results) {
+      roleList.value = response.results;
+      pagination.total = response.count || 0;
+    } else {
+      // 兼容非分页格式
+      roleList.value = Array.isArray(response) ? response : [];
+      pagination.total = roleList.value.length;
+    }
   } catch (error) {
-    ElMessage.error('获取角色列表失败');
+    console.error('获取角色列表失败:', error);
+    ElMessage.error(error.message || '获取角色列表失败');
+    roleList.value = [];
+    pagination.total = 0;
   } finally {
     loading.value = false;
   }
@@ -222,17 +219,18 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // TODO: 调用后端API
-        // if (isEdit.value) {
-        //   await roleAPI.update(formData.id, formData);
-        // } else {
-        //   await roleAPI.create(formData);
-        // }
-        ElMessage.success(isEdit.value ? '更新成功' : '创建成功');
+        if (isEdit.value) {
+          await roleManagement.update(formData.id, formData);
+          ElMessage.success('更新成功');
+        } else {
+          await roleManagement.create(formData);
+          ElMessage.success('创建成功');
+        }
         dialogVisible.value = false;
         fetchRoleList();
       } catch (error) {
-        ElMessage.error('操作失败');
+        console.error('操作失败:', error);
+        ElMessage.error(error.message || '操作失败');
       }
     }
   });
@@ -241,36 +239,36 @@ const handleSubmit = async () => {
 // 分配权限
 const handleAssignMenu = async (row) => {
   currentRoleId.value = row.id;
-  // TODO: 获取菜单树和已分配的菜单
-  // const menus = await menuAPI.getTree();
-  // const assignedMenus = await roleAPI.getMenus(row.id);
-  
-  // 模拟数据
-  menuTreeData.value = [
-    {
-      id: 1,
-      name: '系统管理',
-      children: [
-        { id: 11, name: '用户管理' },
-        { id: 12, name: '角色管理' },
-        { id: 13, name: '菜单管理' }
-      ]
+  try {
+    // 获取菜单树
+    const menus = await menuManagement.getTree();
+    menuTreeData.value = menus;
+    
+    // 获取已分配的菜单
+    const roleDetail = await roleManagement.getMenus(row.id);
+    if (roleDetail.menus && Array.isArray(roleDetail.menus)) {
+      checkedMenuIds.value = roleDetail.menus.map(m => m.id || m);
+    } else {
+      checkedMenuIds.value = [];
     }
-  ];
-  checkedMenuIds.value = [11, 12];
-  menuDialogVisible.value = true;
+    
+    menuDialogVisible.value = true;
+  } catch (error) {
+    console.error('获取菜单数据失败:', error);
+    ElMessage.error(error.message || '获取菜单数据失败');
+  }
 };
 
 // 提交菜单权限
 const handleMenuSubmit = async () => {
   const checkedKeys = menuTreeRef.value.getCheckedKeys();
   try {
-    // TODO: 调用后端API
-    // await roleAPI.assignMenus(currentRoleId.value, checkedKeys);
+    await roleManagement.assignMenus(currentRoleId.value, checkedKeys);
     ElMessage.success('权限分配成功');
     menuDialogVisible.value = false;
   } catch (error) {
-    ElMessage.error('权限分配失败');
+    console.error('权限分配失败:', error);
+    ElMessage.error(error.message || '权限分配失败');
   }
 };
 
@@ -280,13 +278,13 @@ const handleDelete = async (row) => {
     await ElMessageBox.confirm('确定要删除该角色吗？', '提示', {
       type: 'warning'
     });
-    // TODO: 调用后端API
-    // await roleAPI.delete(row.id);
+    await roleManagement.delete(row.id);
     ElMessage.success('删除成功');
     fetchRoleList();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败');
+      console.error('删除失败:', error);
+      ElMessage.error(error.message || '删除失败');
     }
   }
 };

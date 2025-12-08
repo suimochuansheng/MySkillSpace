@@ -88,6 +88,40 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 角色分配对话框 -->
+    <el-dialog 
+      v-model="roleDialogVisible" 
+      title="分配角色"
+      width="500px"
+      @open="handleRoleDialogOpen"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="用户名">
+          <el-input v-model="currentUserName" disabled />
+        </el-form-item>
+        <el-form-item label="选择角色">
+          <el-checkbox-group v-model="selectedRoleIds" v-loading="roleLoading">
+            <el-checkbox 
+              v-for="role in availableRoles" 
+              :key="role.id" 
+              :label="role.id"
+              style="display: block; margin-bottom: 10px;"
+            >
+              {{ role.name }}
+              <span style="color: #909399; font-size: 12px; margin-left: 8px;">({{ role.code }})</span>
+            </el-checkbox>
+          </el-checkbox-group>
+          <div v-if="availableRoles.length === 0 && !roleLoading" style="color: #909399; padding: 20px 0;">
+            暂无可用角色，请先在角色管理中创建角色
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleRoleSubmit" :loading="roleSubmitting">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -95,6 +129,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
+import { userManagement, roleManagement } from '@/api/auth';
 
 // 数据状态
 const loading = ref(false);
@@ -132,30 +167,40 @@ const formRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 };
 
+// 角色分配相关状态
+const roleDialogVisible = ref(false);
+const currentUserId = ref(null);
+const currentUserName = ref('');
+const availableRoles = ref([]);
+const selectedRoleIds = ref([]);
+const roleLoading = ref(false);
+const roleSubmitting = ref(false);
+
 // 获取用户列表
 const fetchUserList = async () => {
   loading.value = true;
   try {
-    // TODO: 调用后端API
-    // const response = await userAPI.getList(searchForm, pagination);
-    // userList.value = response.data;
-    // pagination.total = response.total;
+    const params = {
+      ...searchForm,
+      page: pagination.page,
+      page_size: pagination.pageSize
+    };
+    const response = await userManagement.getList(params);
     
-    // 模拟数据
-    userList.value = [
-      {
-        id: 1,
-        username: 'admin',
-        email: 'admin@skillspace.com',
-        phonenumber: '13800138000',
-        roles: 'admin',
-        is_active: true,
-        date_joined: '2025-01-01 10:00:00'
-      }
-    ];
-    pagination.total = 1;
+    // DRF标准分页格式处理
+    if (response.results) {
+      userList.value = response.results;
+      pagination.total = response.count || 0;
+    } else {
+      // 兼容非分页格式
+      userList.value = Array.isArray(response) ? response : [];
+      pagination.total = userList.value.length;
+    }
   } catch (error) {
-    ElMessage.error('获取用户列表失败');
+    console.error('获取用户列表失败:', error);
+    ElMessage.error(error.message || '获取用户列表失败');
+    userList.value = [];
+    pagination.total = 0;
   } finally {
     loading.value = false;
   }
@@ -202,25 +247,96 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // TODO: 调用后端API
-        // if (isEdit.value) {
-        //   await userAPI.update(formData.id, formData);
-        // } else {
-        //   await userAPI.create(formData);
-        // }
-        ElMessage.success(isEdit.value ? '更新成功' : '创建成功');
+        if (isEdit.value) {
+          await userManagement.update(formData.id, formData);
+          ElMessage.success('更新成功');
+        } else {
+          await userManagement.create(formData);
+          ElMessage.success('创建成功');
+        }
         dialogVisible.value = false;
         fetchUserList();
       } catch (error) {
-        ElMessage.error('操作失败');
+        console.error('操作失败:', error);
+        ElMessage.error(error.message || '操作失败');
       }
     }
   });
 };
 
 // 分配角色
-const handleAssignRole = (row) => {
-  ElMessage.info('角色分配功能开发中');
+const handleAssignRole = async (row) => {
+  currentUserId.value = row.id;
+  currentUserName.value = row.username || row.email;
+  roleDialogVisible.value = true;
+};
+
+// 角色对话框打开时加载数据
+const handleRoleDialogOpen = async () => {
+  await fetchAvailableRoles();
+  await fetchUserRoles();
+};
+
+// 获取所有可用角色
+const fetchAvailableRoles = async () => {
+  roleLoading.value = true;
+  try {
+    const response = await roleManagement.getList({ page_size: 1000 });
+    // 处理分页数据
+    if (response.results) {
+      availableRoles.value = response.results;
+    } else {
+      availableRoles.value = Array.isArray(response) ? response : [];
+    }
+  } catch (error) {
+    console.error('获取角色列表失败:', error);
+    ElMessage.error(error.message || '获取角色列表失败');
+    availableRoles.value = [];
+  } finally {
+    roleLoading.value = false;
+  }
+};
+
+// 获取用户已分配的角色
+const fetchUserRoles = async () => {
+  try {
+    // 直接使用用户详情接口
+    const user = await userManagement.getList({ 
+      page_size: 1000,
+      page: 1
+    }).then(response => {
+      // 从列表中找到当前用户
+      const results = response.results || response;
+      return results.find(u => u.id === currentUserId.value);
+    });
+    
+    // 使用后端返回的 role_ids 字段
+    if (user && user.role_ids && Array.isArray(user.role_ids)) {
+      selectedRoleIds.value = user.role_ids;
+    } else {
+      selectedRoleIds.value = [];
+    }
+  } catch (error) {
+    console.error('获取用户角色失败:', error);
+    selectedRoleIds.value = [];
+  }
+};
+
+// 提交角色分配
+const handleRoleSubmit = async () => {
+  roleSubmitting.value = true;
+  try {
+    await userManagement.assignRoles(currentUserId.value, selectedRoleIds.value);
+    ElMessage.success('角色分配成功');
+    roleDialogVisible.value = false;
+    // 刷新用户列表以显示最新角色
+    await fetchUserList();
+  } catch (error) {
+    console.error('角色分配失败:', error);
+    ElMessage.error(error.message || '角色分配失败');
+  } finally {
+    roleSubmitting.value = false;
+  }
 };
 
 // 删除
@@ -229,13 +345,13 @@ const handleDelete = async (row) => {
     await ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
       type: 'warning'
     });
-    // TODO: 调用后端API
-    // await userAPI.delete(row.id);
+    await userManagement.delete(row.id);
     ElMessage.success('删除成功');
     fetchUserList();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败');
+      console.error('删除失败:', error);
+      ElMessage.error(error.message || '删除失败');
     }
   }
 };
