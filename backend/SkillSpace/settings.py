@@ -27,6 +27,9 @@ sys.path.insert(0, os.path.join(BASE_DIR, 'SkillSpace', 'myapps'))
 # 假设 .env 文件在项目根目录（和 manage.py 同目录）
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
+
+# 输出sys.path都有哪些路径
+# print("系统路径path:",sys.path)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -41,7 +44,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
-
+ 
 INSTALLED_APPS = [
     # admin 界面美化
     'simpleui',
@@ -67,7 +70,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',  # 启用CSRF保护
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -80,8 +83,22 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
 ]
 
-# 核心：允许跨域请求携带凭证
+# 允许携带 Cookie (Session 认证必须)
 CORS_ALLOW_CREDENTIALS = True
+
+# Session 配置
+SESSION_COOKIE_AGE = 86400  # Session过期时间（24小时）
+SESSION_COOKIE_HTTPONLY = True  # 防止JavaScript访问
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF保护
+SESSION_SAVE_EVERY_REQUEST = True  # 每次请求都更新Session
+
+# CSRF 配置
+CSRF_COOKIE_HTTPONLY = False  # 允许JavaScript读取CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
 
 ROOT_URLCONF = 'SkillSpace.urls'
 
@@ -186,7 +203,7 @@ STATICFILES_DIRS = [
 ]
 
 # Media files (用户上传文件)
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ========== CELERY 配置 ==========
@@ -209,7 +226,7 @@ DEFAULT_FROM_EMAIL = 'noreply@skillspace.local'  # 设置默认发件人
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ========== 自定义用户模型配置 ==========
-# 指定自定义的User模型（使用邮箱登录）
+# 指定自定义的User模型
 AUTH_USER_MODEL = 'auth_system.User'
 
 # 关闭底部 "Simple UI 官方文档" 链接
