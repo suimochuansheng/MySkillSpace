@@ -41,6 +41,41 @@
             class="el-menu-vertical"
             @select="handleModuleChange"
           >
+                    
+          <!-- =================================================== -->
+          <!--  🚀 新增区域 START：权限管理系统模块                  -->
+          <!--  位置：放在 简历管理 (Resume) 上方                    -->
+          <!-- =================================================== -->
+          
+          <el-sub-menu index="system">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>系统管理</span>
+            </template>
+            
+            <!-- 用户管理 -->
+            <el-menu-item index="/sys/user">
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </el-menu-item>
+            
+            <!-- 角色管理 -->
+            <el-menu-item index="/sys/role">
+              <el-icon><Avatar /></el-icon>
+              <span>角色管理</span>
+            </el-menu-item>
+            
+            <!-- 菜单管理 -->
+            <el-menu-item index="/sys/menu">
+              <el-icon><IconMenu /></el-icon>
+              <span>菜单管理</span>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- =================================================== -->
+          <!--  🚀 新增区域 END                                     -->
+          <!-- =================================================== -->
+
             <el-menu-item index="resume">
               <el-icon><Document /></el-icon>
               <span>简历管理</span>
@@ -66,6 +101,7 @@
             <!-- 动态加载模块内容 -->
             <component :is="currentComponent" />
           </el-main>
+
           <el-footer class="dashboard-footer">
             <p>© 2025 SkillSpace技能空间 - 我的技能展示空间</p>
           </el-footer>
@@ -107,7 +143,18 @@
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Document, List, DataAnalysis, User, SwitchButton, ChatDotRound, Check } from '@element-plus/icons-vue';
+import { 
+  Document, 
+  List, 
+  DataAnalysis, 
+  User, 
+  SwitchButton, 
+  ChatDotRound, 
+  Check,
+  Setting,
+  Avatar,
+  Menu as IconMenu
+} from '@element-plus/icons-vue';
 import { authAPI } from '@/api';
 
 // 导入模块组件
@@ -116,6 +163,11 @@ import TasksModule from './modules/TasksModule.vue';
 import AnalyticsModule from './modules/AnalyticsModule.vue';
 import ProfileModule from './modules/ProfileModule.vue';
 import AiModule from './modules/AiModule.vue';
+
+// 导入权限管理组件
+import UserManagement from '../sys/user/index.vue';
+import RoleManagement from '../sys/role/index.vue';
+import MenuManagement from '../sys/menu/index.vue';
 
 // 当前激活的模块
 const activeModule = ref('resume');
@@ -126,6 +178,9 @@ const currentUser = ref({
   username: '',
   email: ''
 });
+
+// 请求状态标记，防止重复请求
+const isFetchingUser = ref(false);
 
 // 头像相关状态
 const showAvatarDialog = ref(false);
@@ -169,6 +224,19 @@ const moduleConfig = {
   profile: {
     title: '个人信息',
     component: ProfileModule
+  },
+  // 新增：权限管理模块
+  '/sys/user': {
+    title: '用户管理',
+    component: UserManagement
+  },
+  '/sys/role': {
+    title: '角色管理',
+    component: RoleManagement
+  },
+  '/sys/menu': {
+    title: '菜单管理',
+    component: MenuManagement
   }
 };
 
@@ -227,14 +295,22 @@ const handleUserCommand = async (command) => {
 
 // 获取当前用户信息
 const fetchCurrentUser = async () => {
+  // 防止重复请求
+  if (isFetchingUser.value) {
+    console.log('正在获取用户信息，跳过重复请求');
+    return;
+  }
+  
+  isFetchingUser.value = true;
+  
   try {
-    // 先尝试从localStorage获取
+    // 先尝试从 localStorage 获取
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       currentUser.value = JSON.parse(storedUser);
     }
     
-    // 从localStorage加载头像设置
+    // 从 localStorage 加载头像设置
     const storedAvatar = localStorage.getItem('userAvatar');
     if (storedAvatar) {
       currentAvatar.value = storedAvatar;
@@ -247,11 +323,22 @@ const fetchCurrentUser = async () => {
     localStorage.setItem('user', JSON.stringify(response));
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    // 如果获取失败，可能是未登录，跳转到登录页
+    // 如果获取失败，可能是未登录或Session过期
     if (error.status === 401 || error.status === 403) {
-      ElMessage.warning('请先登录');
-      window.location.href = '/';
+      // 关键修复：先清除 localStorage，防止死循环
+      localStorage.removeItem('user');
+      localStorage.removeItem('userAvatar');
+      
+      ElMessage.warning('Session已过期，请重新登录');
+      
+      // 延迟跳转，给用户时间看到提示
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     }
+  } finally {
+    // 确保请求状态复位
+    isFetchingUser.value = false;
   }
 };
 

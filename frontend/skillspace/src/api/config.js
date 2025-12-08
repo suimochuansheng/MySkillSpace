@@ -18,6 +18,11 @@ export const API_ENDPOINTS = {
     ME: '/api/auth/me/',                 // 获取当前用户信息
     PASSWORD_CHANGE: '/api/auth/password/change/',  // 修改密码
     CHECK_EMAIL: '/api/auth/check-email/', // 检查邮箱是否可用
+    GET_ROUTERS: '/api/auth/getRouters/', // 获取动态路由菜单
+    // 权限管理相关接口
+    USERS: '/api/auth/users/',           // 用户管理
+    ROLES: '/api/auth/roles/',           // 角色管理
+    MENUS: '/api/auth/menus/',           // 菜单管理
   },
   // 简历相关接口（预留）
   RESUME: {

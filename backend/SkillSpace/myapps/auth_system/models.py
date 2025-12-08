@@ -1,180 +1,100 @@
-# auth_system/models.py
-"""
-用户认证系统的数据模型
-包含自定义用户模型，使用邮箱作为主要登录方式
-"""
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 from django.utils import timezone
 
-
 class UserManager(BaseUserManager):
-    """
-    自定义用户管理器
-    用于创建普通用户和超级用户
-    """
-    
     def create_user(self, email, password=None, **extra_fields):
-        """
-        创建并保存普通用户
-        
-        参数:
-            email: 用户邮箱（必填，作为唯一标识）
-            password: 用户密码
-            **extra_fields: 其他用户字段（如username等）
-            
-        返回:
-            User对象
-        """
         if not email:
             raise ValueError('用户必须提供邮箱地址')
-        
-        # 标准化邮箱地址（转小写）
         email = self.normalize_email(email)
-        
-        # 创建用户实例
         user = self.model(email=email, **extra_fields)
-        
-        # 设置加密密码
         user.set_password(password)
-        
-        # 保存到数据库
         user.save(using=self._db)
-        
         return user
-    
+
     def create_superuser(self, email, password=None, **extra_fields):
-        """
-        创建并保存超级用户
-        自动设置 is_staff 和 is_superuser 为 True
-        
-        参数:
-            email: 超级用户邮箱
-            password: 超级用户密码
-            **extra_fields: 其他字段
-            
-        返回:
-            超级用户对象
-        """
-        # 设置超级用户必需权限
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        
-        # 验证权限设置
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('超级用户必须设置 is_staff=True')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('超级用户必须设置 is_superuser=True')
-        
         return self.create_user(email, password, **extra_fields)
 
+# 1. 新增：菜单/权限模型 (对应PDF中的 SysMenu)
+class Menu(models.Model):
+    """
+    系统菜单/权限表
+    对应前端的路由和按钮权限
+    """
+    MENU_TYPE_CHOICES = (
+        ('M', '目录'), # Directory
+        ('C', '菜单'), # Menu
+        ('F', '按钮'), # Button/Function
+    )
 
+    name = models.CharField('菜单名称', max_length=50)
+    icon = models.CharField('菜单图标', max_length=100, null=True, blank=True)
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='上级菜单', related_name='children')
+    order_num = models.IntegerField('显示顺序', default=0)
+    path = models.CharField('路由地址', max_length=200, null=True, blank=True)
+    component = models.CharField('组件路径', max_length=255, null=True, blank=True)
+    menu_type = models.CharField('菜单类型', max_length=1, choices=MENU_TYPE_CHOICES, default='C')
+    perms = models.CharField('权限标识', max_length=100, null=True, blank=True, help_text='如 system:user:list')
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
+    update_time = models.DateTimeField('更新时间', auto_now=True)
+    remark = models.CharField('备注', max_length=500, null=True, blank=True)
+
+    class Meta:
+        verbose_name = '系统菜单'
+        verbose_name_plural = verbose_name
+        # 按显示顺序升序排列，顺序越小越靠前
+        ordering = ['order_num']
+        db_table = 'sys_menu'
+
+    def __str__(self):
+        return self.name
+
+# 2. 新增：角色模型 (对应PDF中的 SysRole)
+class Role(models.Model):
+    """
+    系统角色表
+    """
+    name = models.CharField('角色名称', max_length=30, unique=True)
+    code = models.CharField('角色权限字符', max_length=100, unique=True, help_text='如 admin, common')
+    remark = models.CharField('备注', max_length=500, null=True, blank=True)
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
+    update_time = models.DateTimeField('更新时间', auto_now=True)
+    
+    # 角色与菜单是多对多关系
+    menus = models.ManyToManyField(Menu, verbose_name='拥有菜单', blank=True, db_table='sys_role_menu')
+
+    class Meta:
+        verbose_name = '系统角色'
+        verbose_name_plural = verbose_name
+        db_table = 'sys_role'
+
+    def __str__(self):
+        return self.name
+
+# 3. 修改：用户模型 (关联角色)
 class User(AbstractBaseUser, PermissionsMixin):
-    """
-    自定义用户模型
-    使用邮箱作为唯一标识符，支持用户名可选
+    email = models.EmailField('邮箱地址', max_length=255, unique=True, db_index=True)
+    username = models.CharField('用户名', max_length=150, blank=True, null=True)
+    avatar = models.CharField('头像', max_length=255, default='default.jpg', null=True, blank=True) # PDF中提到的头像
+    phonenumber = models.CharField('手机号码', max_length=11, null=True, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(default=timezone.now)
     
-    字段说明:
-        email: 邮箱地址（唯一，用于登录）
-        username: 用户名（可选，用于显示）
-        is_active: 账户是否激活
-        is_staff: 是否是管理员
-        date_joined: 注册时间
-        last_login: 最后登录时间（继承自AbstractBaseUser）
-    """
-    
-    # 邮箱字段（主要登录凭证）
-    email = models.EmailField(
-        verbose_name='邮箱地址',
-        max_length=255,
-        unique=True,  # 邮箱必须唯一
-        db_index=True,  # 创建索引以提高查询性能
-        help_text='用户登录时使用的邮箱地址'
-    )
-    
-    # 用户名字段（可选，但可用于登录）
-    username = models.CharField(
-        verbose_name='用户名',
-        max_length=150,
-        blank=True,  # 允许为空
-        null=True,
-        db_index=True,  # 创建索引以提高查询性能
-        help_text='用户显示名称，可用于登录'
-    )
-    
-    # 账户状态字段
-    is_active = models.BooleanField(
-        verbose_name='账户激活状态',
-        default=True,
-        help_text='取消选择代替删除账户'
-    )
-    
-    # 管理员权限字段
-    is_staff = models.BooleanField(
-        verbose_name='管理员状态',
-        default=False,
-        help_text='指定用户是否可以登录管理后台'
-    )
-    
-    # 注册时间
-    date_joined = models.DateTimeField(
-        verbose_name='注册时间',
-        default=timezone.now,
-        help_text='用户首次创建账户的时间'
-    )
-    
-    # 社交登录字段（预留用于Google/GitHub登录）
-    oauth_provider = models.CharField(
-        verbose_name='OAuth提供商',
-        max_length=50,
-        blank=True,
-        null=True,
-        choices=[
-            ('google', 'Google'),
-            ('github', 'GitHub'),
-        ],
-        help_text='第三方登录平台（如Google、GitHub）'
-    )
-    
-    oauth_id = models.CharField(
-        verbose_name='OAuth用户ID',
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text='第三方平台返回的用户唯一标识'
-    )
-    
-    # 指定自定义的用户管理器
+    # 用户与角色是多对多关系
+    roles = models.ManyToManyField(Role, verbose_name='拥有角色', blank=True, db_table='sys_user_role')
+
     objects = UserManager()
-    
-    # 配置：使用email作为登录字段
+
     USERNAME_FIELD = 'email'
-    
-    # 配置：创建超级用户时必须输入的字段（除了email和password）
     REQUIRED_FIELDS = []
-    
+
     class Meta:
         verbose_name = '用户'
         verbose_name_plural = '用户列表'
-        db_table = 'auth_user'  # 自定义数据库表名
-        ordering = ['-date_joined']  # 默认按注册时间倒序排列
-    
-    def __str__(self):
-        """
-        返回用户的字符串表示
-        优先显示用户名，如果没有则显示邮箱
-        """
-        return self.username if self.username else self.email
-    
-    def get_full_name(self):
-        """
-        返回用户完整名称
-        用于Django Admin等地方显示
-        """
-        return self.username if self.username else self.email
-    
-    def get_short_name(self):
-        """
-        返回用户简短名称
-        """
-        return self.username if self.username else self.email.split('@')[0]
+        db_table = 'sys_user' # 修改表名以匹配PDF习惯
+        # 按注册时间降序排列，最新注册的用户在前
+        ordering = ['-date_joined']
