@@ -150,6 +150,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
+import { menuManagement } from '@/api/auth';
 
 // 数据状态
 const loading = ref(false);
@@ -185,76 +186,40 @@ const formRules = {
 const fetchMenuList = async () => {
   loading.value = true;
   try {
-    // TODO: 调用后端API
-    // const response = await menuAPI.getTree();
-    // menuList.value = response;
-    
-    // 模拟数据
-    menuList.value = [
-      {
-        id: 1,
-        name: '系统管理',
-        icon: 'Setting',
-        menu_type: 'M',
-        path: '/sys',
-        component: null,
-        perms: null,
-        order_num: 1,
-        children: [
-          {
-            id: 11,
-            name: '用户管理',
-            icon: 'User',
-            menu_type: 'C',
-            path: '/sys/user',
-            component: 'sys/user/index',
-            perms: 'system:user:list',
-            order_num: 1
-          },
-          {
-            id: 12,
-            name: '角色管理',
-            icon: 'Avatar',
-            menu_type: 'C',
-            path: '/sys/role',
-            component: 'sys/role/index',
-            perms: 'system:role:list',
-            order_num: 2
-          },
-          {
-            id: 13,
-            name: '菜单管理',
-            icon: 'Menu',
-            menu_type: 'C',
-            path: '/sys/menu',
-            component: 'sys/menu/index',
-            perms: 'system:menu:list',
-            order_num: 3
-          }
-        ]
-      }
-    ];
+    // 使用tree接口获取树形结构数据
+    const response = await menuManagement.getTree();
+    menuList.value = Array.isArray(response) ? response : [];
     
     // 构建树形选择器数据
     menuTreeData.value = buildTreeSelectData(menuList.value);
   } catch (error) {
-    ElMessage.error('获取菜单列表失败');
+    console.error('获取菜单列表失败:', error);
+    ElMessage.error(error.message || '获取菜单列表失败');
+    menuList.value = [];
   } finally {
     loading.value = false;
   }
 };
 
 // 构建树形选择器数据
-const buildTreeSelectData = (menus, parentId = null) => {
-  const tree = [];
-  menus.forEach(menu => {
+const buildTreeSelectData = (menus) => {
+  if (!Array.isArray(menus)) return [];
+  
+  const tree = menus.map(menu => {
     const node = {
       id: menu.id,
       name: menu.name,
-      children: menu.children ? buildTreeSelectData(menu.children, menu.id) : []
+      children: []
     };
-    tree.push(node);
+    
+    // 递归处理子菜单
+    if (menu.children && Array.isArray(menu.children) && menu.children.length > 0) {
+      node.children = buildTreeSelectData(menu.children);
+    }
+    
+    return node;
   });
+  
   return tree;
 };
 
@@ -291,17 +256,18 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // TODO: 调用后端API
-        // if (isEdit.value) {
-        //   await menuAPI.update(formData.id, formData);
-        // } else {
-        //   await menuAPI.create(formData);
-        // }
-        ElMessage.success(isEdit.value ? '更新成功' : '创建成功');
+        if (isEdit.value) {
+          await menuManagement.update(formData.id, formData);
+          ElMessage.success('更新成功');
+        } else {
+          await menuManagement.create(formData);
+          ElMessage.success('创建成功');
+        }
         dialogVisible.value = false;
         fetchMenuList();
       } catch (error) {
-        ElMessage.error('操作失败');
+        console.error('操作失败:', error);
+        ElMessage.error(error.message || '操作失败');
       }
     }
   });
@@ -313,13 +279,13 @@ const handleDelete = async (row) => {
     await ElMessageBox.confirm('确定要删除该菜单吗？删除后子菜单也会被删除！', '提示', {
       type: 'warning'
     });
-    // TODO: 调用后端API
-    // await menuAPI.delete(row.id);
+    await menuManagement.delete(row.id);
     ElMessage.success('删除成功');
     fetchMenuList();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败');
+      console.error('删除失败:', error);
+      ElMessage.error(error.message || '删除失败');
     }
   }
 };
