@@ -188,6 +188,9 @@ REST_FRAMEWORK = {
         # 基本认证
         'rest_framework.authentication.BasicAuthentication',
     ],
+    # 分页配置
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # 默认每页数量
 }
 
 

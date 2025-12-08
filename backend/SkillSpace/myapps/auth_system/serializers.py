@@ -27,9 +27,15 @@ class RoleSerializer(serializers.ModelSerializer):
     """
     角色序列化器
     """
+    menus = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = Role
         fields = '__all__'
+    
+    def get_menus(self, obj):
+        # 返回菜单ID列表，用于前端选中状态
+        return [menu.id for menu in obj.menus.all()]
 
 # ==========================================
 # 修改：用户相关序列化器
@@ -40,15 +46,20 @@ class UserSerializer(serializers.ModelSerializer):
     用户基础信息序列化器 (增加角色信息返回)
     """
     roles = serializers.SerializerMethodField()
+    role_ids = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'avatar', 'phonenumber', 'date_joined', 'last_login', 'roles']
+        fields = ['id', 'email', 'username', 'avatar', 'phonenumber', 'date_joined', 'last_login', 'roles', 'role_ids', 'is_active']
         read_only_fields = ['id', 'date_joined', 'last_login']
 
     def get_roles(self, obj):
         # 返回用户拥有的角色名称列表，如 "admin,common"
         return ",".join([role.name for role in obj.roles.all()])
+    
+    def get_role_ids(self, obj):
+        # 返回角色ID列表，用于前端角色分配
+        return [role.id for role in obj.roles.all()]
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """

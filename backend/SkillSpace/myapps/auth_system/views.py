@@ -237,9 +237,27 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
     serializer_class = MenuSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    # 系统核心菜单名称，不允许删除
+    PROTECTED_MENUS = ['系统管理', '用户管理', '角色管理', '菜单管理']
+    
     def get_queryset(self):
         # 按照order_num排序
         return Menu.objects.all().order_by('order_num')
+    
+    def destroy(self, request, *args, **kwargs):
+        """重写删除方法，防止删除核心菜单"""
+        instance = self.get_object()
+        
+        # 检查是否为保护的核心菜单
+        if instance.name in self.PROTECTED_MENUS:
+            return Response(
+                {'detail': f'「{instance.name}」是系统核心功能，不允许删除'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 执行删除
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=False, methods=['get'])
     def tree(self, request):
