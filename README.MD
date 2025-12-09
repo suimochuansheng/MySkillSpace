@@ -231,26 +231,38 @@ skillSpace/
 │   └── skillspace/              # Vue3应用
 │       ├── src/                 # 源代码目录
 │       │   ├── api/             # API接口封装
+│       │   │   ├── ai.js        # AI相关API
 │       │   │   ├── auth.js      # 认证API
 │       │   │   ├── config.js    # API配置
-│       │   │   ├── http.js      # Axios封装
-│       │   │   └── index.js     # API导出
+│       │   │   ├── http.js      # HTTP客户端封装
+│       │   │   ├── index.js     # API导出
+│       │   │   └── resume.js    # 简历相关API
+│       │   ├── styles/          # 样式文件
+│       │   │   ├── components.css # 组件样式
+│       │   │   ├── global.css   # 全局样式
+│       │   │   └── variables.css # CSS变量
 │       │   ├── views/           # 页面组件
 │       │   │   ├── dashboard/   # 仪表盘页面
 │       │   │   │   ├── modules/     # 子模块
-│       │   │   │   │   ├── AnalyticsModule.vue  # 数据分析
-│       │   │   │   │   ├── ProfileModule.vue    # 用户信息
-│       │   │   │   │   ├── ResumeModule.vue     # 简历模块
-│       │   │   │   │   └── TasksModule.vue      # 任务模块
-│       │   │   │   └── DashboardPage.vue    # 主页面
-│       │   │   └── login/       # 登录页面
-│       │   │       └── LoginPage.vue
-│       │   ├── styles/          # 样式文件
-│       │   │   ├── global.css   # 全局样式
-│       │   │   ├── variables.css # CSS变量
-│       │   │   └── components.css # 组件样式
+│       │   │   │   │   ├── AiModule.vue      # AI助手模块
+│       │   │   │   │   ├── AnalyticsModule.vue  # 数据分析模块
+│       │   │   │   │   ├── ProfileModule.vue    # 个人信息模块
+│       │   │   │   │   ├── ResumeModule.vue     # 简历管理模块
+│       │   │   │   │   └── TasksModule.vue      # 任务中心模块
+│       │   │   │   └── DashboardPage.vue    # 仪表盘主页面
+│       │   │   ├── login/       # 登录页面
+│       │   │   │   └── LoginPage.vue
+│       │   │   └── sys/         # 权限管理系统
+│       │   │       ├── menu/    # 菜单管理
+│       │   │       │   └── index.vue
+│       │   │       ├── role/    # 角色管理
+│       │   │       │   └── index.vue
+│       │   │       └── user/    # 用户管理
+│       │   │           └── index.vue
 │       │   ├── App.vue          # 根组件
-│       │   └── main.js          # 入口文件
+│       │   ├── main.js          # 入口文件
+│       │   └── router/          # 路由配置
+│       │       └── index.js
 │       ├── package.json         # 依赖配置
 │       ├── vite.config.js       # Vite配置
 │       └── index.html           # HTML模板
