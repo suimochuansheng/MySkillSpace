@@ -188,6 +188,9 @@ REST_FRAMEWORK = {
         # 基本认证
         'rest_framework.authentication.BasicAuthentication',
     ],
+    # 分页配置
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # 默认每页数量
 }
 
 
@@ -240,3 +243,9 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  # 你的前端地址
     "http://127.0.0.1:5173",  # 可选，防止IP访问的情况
 ]
+
+#AI 阿里云大模型
+# ================= 配置区域 =================
+# 阿里云百炼的兼容 Base URL
+
+

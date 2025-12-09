@@ -24,7 +24,7 @@ urlpatterns = [
     # 异步处理接口
     path('api/tasks/', include('tasks_hub.urls')),
     # 简历接口
-    path('api/', include('resume.urls')),
+    path('api/resume/', include('resume.urls')),
     # 用户认证接口
     path('api/auth/', include('auth_system.urls')),
     # ai 模型接口
