@@ -1,0 +1,38 @@
+name: CI Code Check
+
+on:
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Linting Tools
+      # 只安装轻量级工具，不安装 requirements.txt 里的 torch，节省大量时间
+      run: |
+        pip install flake8 isort black
+
+    - name: Run Black (Check Formatting)
+      # 检查代码格式是否符合规范，但不修改
+      run: black --check .
+
+    - name: Run Isort (Check Imports)
+      # 检查导包顺序
+      run: isort --check-only --profile black .
+
+    - name: Run Flake8 (Catch Errors)
+      # 忽略一些无关紧要的格式错误 (E501是行过长，W503是换行符)
+      # exclude 排除掉 migration 和 settings
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --max-complexity=10 --max-line-length=127 --ignore=E501,W503 --exclude=*/migrations/*,venv,env,settings.py --statistics
