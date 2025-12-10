@@ -78,7 +78,7 @@
 
             <el-menu-item index="resume">
               <el-icon><Document /></el-icon>
-              <span>AI简历中诊断</span>
+              <span>AI简历诊断</span>
             </el-menu-item>
             <el-menu-item index="tasks">
               <el-icon><List /></el-icon>
