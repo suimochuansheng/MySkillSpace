@@ -1,122 +1,307 @@
 <template>
-  <div class="resume-module">
-    <el-card class="module-card">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">简历管理</span>
-          <el-button type="primary" size="small" @click="handleAddResume">
-            <el-icon><Plus /></el-icon>
-            新增简历
-          </el-button>
-        </div>
-      </template>
+  <div class="resume-diagnose-container">
+    <el-row :gutter="20">
+      
+      <!-- 左侧：输入区域 -->
+      <el-col :xs="24" :md="10" :lg="8">
+        <el-card class="input-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>🚀 AI 简历诊断工作台</span>
+            </div>
+          </template>
 
-      <div class="module-content">
-        <el-table 
-          v-loading="loading"
-          :data="resumeList" 
-          style="width: 100%"
-          stripe
-        >
-          <el-table-column prop="name" label="姓名" width="150" />
-          <el-table-column prop="position" label="职位" width="180" />
-          <el-table-column prop="education" label="教育背景" show-overflow-tooltip />
-          <el-table-column prop="skills" label="技能" show-overflow-tooltip />
-          <el-table-column label="操作" width="200" align="center">
-            <template #default="scope">
-              <el-button size="small" @click="handleView(scope.row)">查看</el-button>
-              <el-button size="small" type="primary" @click="handleEdit(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+          <el-form ref="formRef" :model="form" label-position="top">
+            
+            <!-- 1. 文件上传 -->
+            <el-form-item label="第一步：上传简历 (PDF/TXT)" required>
+              <el-upload
+                class="upload-demo"
+                drag
+                action="#"
+                :auto-upload="false"
+                :limit="1"
+                :on-change="handleFileChange"
+                :on-exceed="handleExceed"
+                :before-upload="beforeUpload"
+                accept=".pdf,.txt"
+              >
+                <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+                <div class="el-upload__text">
+                  拖拽文件到此处 或 <em>点击上传</em>
+                </div>
+                <template #tip>
+                  <div class="el-upload__tip">
+                    限制 PDF/TXT 格式，< 5MB
+                  </div>
+                </template>
+              </el-upload>
+              <!-- 文件预览 -->
+              <div v-if="form.file" class="file-preview">
+                <el-tag type="success" closable @close="clearFile" effect="dark">
+                  📄 {{ form.file.name }}
+                </el-tag>
+              </div>
+            </el-form-item>
 
-        <div v-if="!loading && resumeList.length === 0" class="empty-state">
-          <el-empty description="暂无简历数据，点击上方按钮新增简历" />
+            <!-- 2. JD 输入 -->
+            <el-form-item label="第二步：输入目标岗位 (JD)" required>
+              <el-input
+                v-model="form.jdText"
+                type="textarea"
+                :rows="8"
+                placeholder="请粘贴 JD 内容。AI 将分析简历与该岗位的匹配度..."
+                maxlength="2000"
+                show-word-limit
+              />
+            </el-form-item>
+
+            <!-- 3. 提交按钮 -->
+            <el-button 
+              type="primary" 
+              size="large" 
+              class="submit-btn" 
+              :loading="loading" 
+              @click="handleSubmit"
+              :disabled="!form.file || !form.jdText"
+            >
+              {{ loading ? '正在连接阿里云 Qwen 进行分析...' : '开始智能诊断' }}
+            </el-button>
+          </el-form>
+        </el-card>
+      </el-col>
+
+      <!-- 右侧：分析结果区域 -->
+      <el-col :xs="24" :md="14" :lg="16">
+        <div v-loading="loading" element-loading-text="AI 正在深度阅读您的简历..." class="result-wrapper">
+          
+          <!-- 空状态 -->
+          <el-empty v-if="!result && !loading" description="请在左侧完成数据录入，开始您的 AI 求职之旅" />
+
+          <!-- 分析报告 -->
+          <div v-if="result" class="report-content">
+            
+            <!-- 头部评分卡 -->
+            <el-card class="score-card" shadow="never">
+              <div class="score-header">
+                <div class="score-circle">
+                  <el-progress 
+                    type="dashboard" 
+                    :percentage="result.score" 
+                    :color="scoreColor"
+                    :width="120"
+                    :stroke-width="10"
+                  >
+                    <template #default="{ percentage }">
+                      <span class="score-num">{{ percentage }}</span>
+                      <span class="score-label">匹配分</span>
+                    </template>
+                  </el-progress>
+                </div>
+                <div class="score-summary">
+                  <h3>🤖 AI 综合评价</h3>
+                  <p>{{ result.summary }}</p>
+                </div>
+              </div>
+            </el-card>
+
+            <!-- 优缺点分析 -->
+            <el-row :gutter="15" class="mt-20">
+              <el-col :span="12">
+                <el-card class="pros-cons-card" shadow="hover">
+                  <template #header>
+                    <span class="text-success"><el-icon><CircleCheckFilled /></el-icon> 核心亮点</span>
+                  </template>
+                  <ul>
+                    <li v-for="(item, index) in (result.pros || [])" :key="index">{{ item }}</li>
+                  </ul>
+                </el-card>
+              </el-col>
+              <el-col :span="12">
+                <el-card class="pros-cons-card" shadow="hover">
+                  <template #header>
+                    <span class="text-danger"><el-icon><CircleCloseFilled /></el-icon> 潜在风险</span>
+                  </template>
+                  <ul>
+                    <li v-for="(item, index) in result.cons" :key="index">{{ item }}</li>
+                  </ul>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <!-- 详细建议 -->
+            <el-card class="mt-20 suggestions-card" shadow="hover">
+              <template #header>
+                <span>💡 改进建议与行动指南</span>
+              </template>
+              <div class="suggestion-text" v-html="formattedSuggestions"></div>
+            </el-card>
+
+          </div>
         </div>
-      </div>
-    </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
-import { http } from '@/api';
+import { ref, computed } from 'vue'
+import { UploadFilled, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElNotification } from 'element-plus'
+import { diagnoseResume } from '@/api/resume'
 
-const loading = ref(false);
-const resumeList = ref([]);
+const loading = ref(false)
+const form = ref({ file: null, jdText: '' })
+const result = ref(null)
 
-// 获取简历列表
-const fetchResumeList = async () => {
-  loading.value = true;
-  try {
-    const response = await http.get('/api/resume/');
-    resumeList.value = response;
-    ElMessage.success('简历数据加载成功');
-  } catch (error) {
-    console.error('获取简历列表失败:', error);
-    ElMessage.error('获取简历列表失败');
-  } finally {
-    loading.value = false;
+// 颜色根据分数变化
+const scoreColor = computed(() => {
+  // 强制转为数字，防止 NaN
+  const s = Number(result.value?.score) || 0
+  if (s < 60) return '#F56C6C'
+  if (s < 80) return '#E6A23C'
+  return '#67C23A'
+})
+
+// 安全地处理建议文本（防止后端返回非字符串导致 .replace 报错）
+const formattedSuggestions = computed(() => {
+  const raw = result.value?.suggestions
+  if (!raw) return '暂无建议'
+  
+  // 如果 AI 返回的是数组，自动连接成字符串
+  if (Array.isArray(raw)) {
+    return raw.join('<br/>')
   }
-};
+  
+  // 强制转字符串再 replace
+  return String(raw).replace(/\n/g, '<br/>')
+})
 
-// 新增简历
-const handleAddResume = () => {
-  ElMessage.info('新增简历功能开发中...');
-};
+const handleFileChange = (uploadFile) => {
+  const rawFile = uploadFile.raw
+  if (rawFile.type !== 'application/pdf' && rawFile.type !== 'text/plain') {
+    ElMessage.error('仅支持 PDF 或 TXT 文件')
+    form.value.file = null
+    return
+  }
+  if (rawFile.size / 1024 / 1024 > 5) {
+    ElMessage.error('文件大小需小于 5MB')
+    form.value.file = null
+    return
+  }
+  form.value.file = rawFile
+}
 
-// 查看简历
-const handleView = (row) => {
-  ElMessage.info(`查看简历: ${row.name}`);
-};
+const handleExceed = () => ElMessage.warning('请删除旧文件后重新上传')
+const clearFile = () => form.value.file = null
+const beforeUpload = () => false
 
-// 编辑简历
-const handleEdit = (row) => {
-  ElMessage.info(`编辑简历: ${row.name}`);
-};
+const handleSubmit = async () => {
+  loading.value = true
+  result.value = null
+  try {
+    const fd = new FormData()
+    fd.append('resume_file', form.value.file)
+    fd.append('jd_text', form.value.jdText)
 
-// 删除简历
-const handleDelete = (row) => {
-  ElMessage.info(`删除简历: ${row.name}`);
-};
+    const res = await diagnoseResume(fd)
+    
+    // console.log('API返回:', res) // 调试用
 
-onMounted(() => {
-  fetchResumeList();
-});
+    if (res && res.code === 200) {
+        // 🔥 关键修正：数据清洗 (Data Sanitization)
+        // 确保哪怕后端乱返回，前端也不会崩
+        const rawData = res.data || {}
+        
+        result.value = {
+            score: Number(rawData.score) || 0, // 确保是数字
+            summary: rawData.summary || 'AI 未生成总结',
+            // 确保是数组，防止 v-for 报错
+            pros: Array.isArray(rawData.pros) ? rawData.pros : [],
+            cons: Array.isArray(rawData.cons) ? rawData.cons : [],
+            suggestions: rawData.suggestions || ''
+        }
+        
+        ElNotification.success({ title: '诊断完成', message: `得分：${result.value.score}` })
+    } else {
+        ElMessage.error(res.message || '诊断失败')
+    }
+  } catch (error) {
+    console.error('前端处理错误:', error)
+    ElMessage.error('请求出错，请检查网络或后端日志')
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
+
 <style scoped>
-.resume-module {
-  height: 100%;
+.resume-diagnose-container {
+  /* 移除固定高度，适应 Dashboard 内容区 */
+  background-color: transparent; 
 }
 
-.module-card {
-  height: 100%;
+.input-card {
+  border-radius: 8px;
+}
+.card-header span {
+  font-weight: bold;
+  font-size: 16px;
 }
 
-.card-header {
+.submit-btn {
+  width: 100%;
+  margin-top: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.file-preview {
+  margin-top: 10px;
+}
+
+/* 结果区域样式 */
+.score-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 20px;
 }
-
-.card-title {
+.score-summary h3 {
+  margin: 0 0 10px 0;
   font-size: 18px;
-  font-weight: 600;
+}
+.score-summary p {
+  color: #606266;
+  line-height: 1.6;
+  margin: 0;
+}
+.score-num {
+  font-size: 28px;
+  font-weight: bold;
+  display: block;
+}
+.score-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.mt-20 { margin-top: 20px; }
+.text-success { color: #67C23A; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+.text-danger { color: #F56C6C; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+
+.pros-cons-card ul {
+  padding-left: 18px;
+  margin: 0;
+}
+.pros-cons-card li {
+  margin-bottom: 8px;
+  color: #606266;
+}
+
+.suggestion-text {
+  line-height: 1.8;
   color: #303133;
-}
-
-.module-content {
-  min-height: 400px;
-}
-
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
+  white-space: pre-wrap;
 }
 </style>

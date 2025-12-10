@@ -136,14 +136,27 @@ class HttpClient {
    * POST请求
    * 
    * @param {string} url - 请求路径
-   * @param {object} data - 请求体数据
+   * @param {object|FormData} data - 请求体数据
+   * @param {object} options - 其他选项
    * @returns {Promise} 响应数据
    */
-  async post(url, data = {}) {
-    return this.request(url, {
+  async post(url, data = {}, options = {}) {
+    const config = {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
+    };
+    
+    // 处理FormData特殊情况
+    if (data instanceof FormData) {
+      config.body = data;
+      // FormData会自动设置Content-Type，不需要手动设置
+    } else {
+      config.body = JSON.stringify(data);
+    }
+    
+    // 合并其他选项
+    Object.assign(config, options);
+    
+    return this.request(url, config);
   }
 
   /**
