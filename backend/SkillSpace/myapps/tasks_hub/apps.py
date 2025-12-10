@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class TasksHubConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'tasks_hub'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "tasks_hub"

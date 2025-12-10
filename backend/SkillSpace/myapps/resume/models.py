@@ -1,11 +1,13 @@
 # resume/models.py
 from django.db import models
 
+
 class ResumeItem(models.Model):
     """
     简历条目模型
     存储个人简历信息
     """
+
     name = models.CharField(max_length=100, default="我的名字", verbose_name="姓名")
     position = models.CharField(max_length=100, default="我的职位", verbose_name="职位")
     education = models.TextField(default="教育背景", verbose_name="教育经历")
