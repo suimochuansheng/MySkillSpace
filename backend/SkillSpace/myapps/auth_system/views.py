@@ -1,18 +1,20 @@
 # auth_system/views.py
-from rest_framework import status, generics, permissions, viewsets
+from django.contrib.auth import login, logout
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import action
-from django.contrib.auth import login, logout
-from .models import User, Menu, Role
+
+from .models import Menu, Role, User
 from .serializers import (
-    UserSerializer,
-    UserRegistrationSerializer,
-    UserLoginSerializer,
-    PasswordChangeSerializer,
     MenuSerializer,
-    RoleSerializer
+    PasswordChangeSerializer,
+    RoleSerializer,
+    UserLoginSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
 )
+
 
 # ==========================================
 # 工具函数：构建菜单树
@@ -24,7 +26,7 @@ def build_menu_tree(menu_queryset):
     menu_list = list(menu_queryset)
     menu_dict = {menu.id: menu for menu in menu_list}
     roots = []
-    
+
     for menu in menu_list:
         menu.children_list = []  # 初始化临时属性
         parent_id = menu.parent_id
@@ -35,51 +37,61 @@ def build_menu_tree(menu_queryset):
             roots.append(menu)
     return roots
 
+
 # ==========================================
 # 视图类
 # ==========================================
+
 
 class UserRegistrationView(generics.CreateAPIView):
     """
     用户注册API (保留原功能)
     """
+
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
-    
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response({
-            'user': UserSerializer(user).data,
-            'message': '注册成功，欢迎加入 Skillspace！'
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "message": "注册成功，欢迎加入 Skillspace！",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class UserLoginView(APIView):
     """
     用户登录API (升级：返回Token、用户信息、动态路由菜单、权限标识)
     """
+
     permission_classes = [permissions.AllowAny]
     serializer_class = UserLoginSerializer
-    
+
     def post(self, request):
-        serializer = UserLoginSerializer(data=request.data, context={'request': request})
+        serializer = UserLoginSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        
+        user = serializer.validated_data["user"]
+
         # 1. 建立 Session
         login(request, user)
-        
+
         # 2. 获取权限和菜单
         roles = user.roles.all()
         # 获取角色关联的菜单，去重并排序
-        menus = Menu.objects.filter(role__in=roles).distinct().order_by('order_num')
-        
+        menus = Menu.objects.filter(role__in=roles).distinct().order_by("order_num")
+
         # 3. 构建菜单树 (用于左侧导航栏)
         # 过滤掉类型为 'F' (按钮) 的，只保留目录 'M' 和 菜单 'C'，如果前端需要全部则去掉 filter
-        menu_tree = build_menu_tree(menus.exclude(menu_type='F'))
-        
+        menu_tree = build_menu_tree(menus.exclude(menu_type="F"))
+
         # 4. 获取按钮权限标识 (用于页面按钮显隐)
         perms = set()
         for menu in menus:
@@ -87,85 +99,110 @@ class UserLoginView(APIView):
                 perms.add(menu.perms)
 
         # 5. 返回完整数据
-        return Response({
-            'code': 200,
-            'message': '登录成功！🎉 欢迎回到 Skillspace！',
-            'token': request.session.session_key or 'session_active', # Session模式下Token非必须，但前端可能需要一个非空值
-            'user': UserSerializer(user).data,
-            'menuList': MenuSerializer(menu_tree, many=True).data,
-            'authorities': list(perms)
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "code": 200,
+                "message": "登录成功！🎉 欢迎回到 Skillspace！",
+                "token": request.session.session_key
+                or "session_active",  # Session模式下Token非必须，但前端可能需要一个非空值
+                "user": UserSerializer(user).data,
+                "menuList": MenuSerializer(menu_tree, many=True).data,
+                "authorities": list(perms),
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class UserLogoutView(APIView):
     """
     用户登出API
     """
+
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def post(self, request):
         logout(request)
-        return Response({'message': '登出成功'}, status=status.HTTP_200_OK)
+        return Response({"message": "登出成功"}, status=status.HTTP_200_OK)
+
 
 class CurrentUserView(APIView):
     """
     获取当前用户信息API
     """
+
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class GetRoutersView(APIView):
     """
     获取动态路由API (用于前端刷新页面后重新获取菜单)
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
         roles = user.roles.all()
-        menus = Menu.objects.filter(role__in=roles).distinct().order_by('order_num')
+        menus = Menu.objects.filter(role__in=roles).distinct().order_by("order_num")
         # 构建树，通常路由只需 M 和 C 类型
-        menu_tree = build_menu_tree(menus.exclude(menu_type='F'))
-        
-        return Response({
-            'code': 200,
-            'menuList': MenuSerializer(menu_tree, many=True).data
-        })
+        menu_tree = build_menu_tree(menus.exclude(menu_type="F"))
+
+        return Response(
+            {"code": 200, "menuList": MenuSerializer(menu_tree, many=True).data}
+        )
+
 
 class PasswordChangeView(APIView):
     """
     修改密码API
     """
+
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def post(self, request):
-        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        serializer = PasswordChangeSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         logout(request)
-        return Response({'message': '密码修改成功，请使用新密码重新登录'}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "密码修改成功，请使用新密码重新登录"}, status=status.HTTP_200_OK
+        )
+
 
 class CheckEmailView(APIView):
     """
     检查邮箱是否存在API
     """
+
     permission_classes = [permissions.AllowAny]
-    
+
     def post(self, request):
-        email = request.data.get('email', '')
+        email = request.data.get("email", "")
         if not email:
-            return Response({'available': False, 'message': '请输入邮箱'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"available": False, "message": "请输入邮箱"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         exists = User.objects.filter(email__iexact=email).exists()
-        return Response({
-            'available': not exists,
-            'message': '该邮箱已被注册' if exists else '该邮箱可以使用'
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "available": not exists,
+                "message": "该邮箱已被注册" if exists else "该邮箱可以使用",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 # ==========================================
 # ViewSet：权限管理CRUD接口
 # ==========================================
+
 
 class UserManagementViewSet(viewsets.ModelViewSet):
     """
@@ -176,31 +213,33 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     PUT /api/auth/users/{id}/ - 更新用户
     DELETE /api/auth/users/{id}/ - 删除用户
     """
+
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         # 可以根据需要添加过滤逻辑
-        return User.objects.all().order_by('-date_joined')
-    
-    @action(detail=True, methods=['post'])
+        return User.objects.all().order_by("-date_joined")
+
+    @action(detail=True, methods=["post"])
     def reset_password(self, request, pk=None):
         """重置用户密码"""
         user = self.get_object()
-        new_password = request.data.get('new_password', '123456')
+        new_password = request.data.get("new_password", "123456")
         user.set_password(new_password)
         user.save()
-        return Response({'message': '密码重置成功'})
-    
-    @action(detail=True, methods=['post'])
+        return Response({"message": "密码重置成功"})
+
+    @action(detail=True, methods=["post"])
     def assign_roles(self, request, pk=None):
         """为用户分配角色"""
         user = self.get_object()
-        role_ids = request.data.get('role_ids', [])
+        role_ids = request.data.get("role_ids", [])
         roles = Role.objects.filter(id__in=role_ids)
         user.roles.set(roles)
-        return Response({'message': '角色分配成功', 'user': UserSerializer(user).data})
+        return Response({"message": "角色分配成功", "user": UserSerializer(user).data})
+
 
 class RoleManagementViewSet(viewsets.ModelViewSet):
     """
@@ -211,18 +250,22 @@ class RoleManagementViewSet(viewsets.ModelViewSet):
     PUT /api/auth/roles/{id}/ - 更新角色
     DELETE /api/auth/roles/{id}/ - 删除角色
     """
+
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
-    @action(detail=True, methods=['post'])
+
+    @action(detail=True, methods=["post"])
     def assign_menus(self, request, pk=None):
         """为角色分配菜单权限"""
         role = self.get_object()
-        menu_ids = request.data.get('menu_ids', [])
+        menu_ids = request.data.get("menu_ids", [])
         menus = Menu.objects.filter(id__in=menu_ids)
         role.menus.set(menus)
-        return Response({'message': '菜单权限分配成功', 'role': RoleSerializer(role).data})
+        return Response(
+            {"message": "菜单权限分配成功", "role": RoleSerializer(role).data}
+        )
+
 
 class MenuManagementViewSet(viewsets.ModelViewSet):
     """
@@ -233,35 +276,36 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
     PUT /api/auth/menus/{id}/ - 更新菜单
     DELETE /api/auth/menus/{id}/ - 删除菜单
     """
+
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     # 系统核心菜单名称，不允许删除
-    PROTECTED_MENUS = ['系统管理', '用户管理', '角色管理', '菜单管理']
-    
+    PROTECTED_MENUS = ["系统管理", "用户管理", "角色管理", "菜单管理"]
+
     def get_queryset(self):
         # 按照order_num排序
-        return Menu.objects.all().order_by('order_num')
-    
+        return Menu.objects.all().order_by("order_num")
+
     def destroy(self, request, *args, **kwargs):
         """重写删除方法，防止删除核心菜单"""
         instance = self.get_object()
-        
+
         # 检查是否为保护的核心菜单
         if instance.name in self.PROTECTED_MENUS:
             return Response(
-                {'detail': f'「{instance.name}」是系统核心功能，不允许删除'}, 
-                status=status.HTTP_403_FORBIDDEN
+                {"detail": f"「{instance.name}」是系统核心功能，不允许删除"},
+                status=status.HTTP_403_FORBIDDEN,
             )
-        
+
         # 执行删除
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    @action(detail=False, methods=['get'])
+
+    @action(detail=False, methods=["get"])
     def tree(self, request):
         """获取菜单树结构"""
-        menus = Menu.objects.all().order_by('order_num')
+        menus = Menu.objects.all().order_by("order_num")
         menu_tree = build_menu_tree(menus)
         return Response(MenuSerializer(menu_tree, many=True).data)

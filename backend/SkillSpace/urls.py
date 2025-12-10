@@ -14,21 +14,22 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
+
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
     # 异步处理接口
-    path('api/tasks/', include('tasks_hub.urls')),
+    path("api/tasks/", include("tasks_hub.urls")),
     # 简历接口
-    path('api/resume/', include('resume.urls')),
+    path("api/resume/", include("resume.urls")),
     # 用户认证接口
-    path('api/auth/', include('auth_system.urls')),
+    path("api/auth/", include("auth_system.urls")),
     # ai 模型接口
-    path('api/ai/', include('ai_demo.urls')), # 人工智能模型接口
+    path("api/ai/", include("ai_demo.urls")),  # 人工智能模型接口
 ]
 
 # 开发环境下提供media文件访问

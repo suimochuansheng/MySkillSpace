@@ -1,22 +1,23 @@
 # 文件路径: backend/myapps/resume/services.py
 
-from openai import OpenAI
-import os
 import json
+import os
 
+from openai import OpenAI
 
 # 推荐模型：
 # qwen-plus (性价比高，能力强)
 # qwen-max (能力最强，稍贵)
 # qwen-turbo (最快最便宜)
-MODEL_NAME = "qwen-plus" 
+MODEL_NAME = "qwen-plus"
 # ===========================================
+
 
 def ai_analyze_resume(resume_text: str, jd_text: str) -> dict:
     """
     调用阿里云通义千问模型进行简历诊断
     """
-    
+
     # 构造 Prompt (提示词)
     # 这里的 Prompt 不需要变，通义千问完全听得懂
     prompt = f"""
@@ -42,25 +43,25 @@ def ai_analyze_resume(resume_text: str, jd_text: str) -> dict:
     ALIYUN_BASE_URL = os.getenv("ALIYUN_BASE_URL")
     try:
         # 初始化客户端（使用 openai 库，但指向阿里云）
-        client = OpenAI(
-            api_key=ALIYUN_API_KEY,
-            base_url=ALIYUN_BASE_URL
-        )
+        client = OpenAI(api_key=ALIYUN_API_KEY, base_url=ALIYUN_BASE_URL)
 
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
-                {'role': 'system', 'content': '你是一个能够输出结构化 JSON 数据的助手。'},
-                {'role': 'user', 'content': prompt}
+                {
+                    "role": "system",
+                    "content": "你是一个能够输出结构化 JSON 数据的助手。",
+                },
+                {"role": "user", "content": prompt},
             ],
             # 这里的 response_format 设置取决于模型版本，Qwen 新版支持很好
             # 如果报错，可以去掉下面这一行，靠 Prompt 约束即可
-            response_format={"type": "json_object"} 
+            response_format={"type": "json_object"},
         )
 
         # 获取返回内容
         content = response.choices[0].message.content
-        
+
         # 解析 JSON
         # 有时候模型还是会顽皮地加上 ```json 头，这里做个清洗保险
         if content.startswith("```json"):
@@ -76,5 +77,5 @@ def ai_analyze_resume(resume_text: str, jd_text: str) -> dict:
             "summary": f"服务暂时不可用: {str(e)}",
             "pros": [],
             "cons": [],
-            "suggestions": "请检查后端 API Key 配置。"
+            "suggestions": "请检查后端 API Key 配置。",
         }

@@ -10,22 +10,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
 import sys
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv('.env')
+load_dotenv(".env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Add myapps directory to Python path
-sys.path.insert(0, os.path.join(BASE_DIR, 'SkillSpace', 'myapps'))
+sys.path.insert(0, os.path.join(BASE_DIR, "SkillSpace", "myapps"))
 
 # 假设 .env 文件在项目根目录（和 manage.py 同目录）
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 
 # 输出sys.path都有哪些路径
@@ -34,46 +35,46 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # ALLOWED_HOSTS = ['*']
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
 # Application definition
- 
+
 INSTALLED_APPS = [
     # admin 界面美化
-    'simpleui',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "simpleui",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # 第三方应用
-    'rest_framework',
-    'corsheaders',
+    "rest_framework",
+    "corsheaders",
     # myapps
-    'tasks_hub',
-    'resume',
-    'auth_system',  # 用户认证系统
-    'ai_demo', # 人工智能Demo
+    "tasks_hub",
+    "resume",
+    "auth_system",  # 用户认证系统
+    "ai_demo",  # 人工智能Demo
 ]
 
 MIDDLEWARE = [
     # 放在最前面-跨域问题
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',  # 启用CSRF保护
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",  # 启用CSRF保护
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 # CORS配置：仅允许指定来源（不使用 CORS_ALLOW_ALL_ORIGINS）
 CORS_ALLOWED_ORIGINS = [
@@ -89,60 +90,60 @@ CORS_ALLOW_CREDENTIALS = True
 # Session 配置
 SESSION_COOKIE_AGE = 86400  # Session过期时间（24小时）
 SESSION_COOKIE_HTTPONLY = True  # 防止JavaScript访问
-SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF保护
+SESSION_COOKIE_SAMESITE = "Lax"  # CSRF保护
 SESSION_SAVE_EVERY_REQUEST = True  # 每次请求都更新Session
 
 # CSRF 配置
 CSRF_COOKIE_HTTPONLY = False  # 允许JavaScript读取CSRF token
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
-ROOT_URLCONF = 'SkillSpace.urls'
+ROOT_URLCONF = "SkillSpace.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'SkillSpace.wsgi.application'
+WSGI_APPLICATION = "SkillSpace.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # 根据环境变量选择数据库：CI 环境使用 SQLite，本地/生产使用 MySQL
-if os.getenv('DB_NAME'):  # 如果配置了数据库名，使用 MySQL
+if os.getenv("DB_NAME"):  # 如果配置了数据库名，使用 MySQL
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', ''),
-            'USER': os.getenv('DB_USER', ''),
-            'PASSWORD': os.getenv('DB_PASSWORD',''),
-            'HOST': os.getenv('DB_HOST', ''),
-            'PORT': os.getenv('DB_PORT', ''),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": os.getenv("DB_NAME", ""),
+            "USER": os.getenv("DB_USER", ""),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", ""),
+            "PORT": os.getenv("DB_PORT", ""),
+            "OPTIONS": {
+                "charset": "utf8mb4",
             },
         }
     }
 else:  # CI 环境或未配置数据库，使用 SQLite
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 # Password validation
@@ -150,16 +151,16 @@ else:  # CI 环境或未配置数据库，使用 SQLite
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -167,70 +168,74 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'zh-hans'
+LANGUAGE_CODE = "zh-hans"
 
-TIME_ZONE = 'Asia/Shanghai'
+TIME_ZONE = "Asia/Shanghai"
 
 # 使用国际化
 USE_I18N = True
 # 使用时区
 USE_TZ = True
 
-# REST Framework 
+# REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
+    "DEFAULT_PERMISSION_CLASSES": [
         # 允许所有用户访问
-        'rest_framework.permissions.AllowAny',
+        "rest_framework.permissions.AllowAny",
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
+    "DEFAULT_AUTHENTICATION_CLASSES": [
         # 会话认证
-        'rest_framework.authentication.SessionAuthentication',
+        "rest_framework.authentication.SessionAuthentication",
         # 基本认证
-        'rest_framework.authentication.BasicAuthentication',
+        "rest_framework.authentication.BasicAuthentication",
     ],
     # 分页配置
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,  # 默认每页数量
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,  # 默认每页数量
 }
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # 开发环境静态文件目录
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, "static"),
 ]
 
 # Media files (用户上传文件)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # ========== CELERY 配置 ==========
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')  # 使用 Redis 存储结果
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Shanghai'  # 设置 Celery 时区
-CELERY_ENABLE_UTC = True  # 启用 UTC 时间   
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND", "redis://localhost:6379/0"
+)  # 使用 Redis 存储结果
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Shanghai"  # 设置 Celery 时区
+CELERY_ENABLE_UTC = True  # 启用 UTC 时间
 
 # ========== 邮件配置（用于测试）==========
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # 控制台打印邮件（安全！）
-DEFAULT_FROM_EMAIL = 'noreply@skillspace.local'  # 设置默认发件人
+EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"  # 控制台打印邮件（安全！）
+)
+DEFAULT_FROM_EMAIL = "noreply@skillspace.local"  # 设置默认发件人
 
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ========== 自定义用户模型配置 ==========
 # 指定自定义的User模型
-AUTH_USER_MODEL = 'auth_system.User'
+AUTH_USER_MODEL = "auth_system.User"
 
 # 关闭底部 "Simple UI 官方文档" 链接
 SIMPLEUI_HOME_INFO = False
@@ -244,8 +249,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",  # 可选，防止IP访问的情况
 ]
 
-#AI 阿里云大模型
+# AI 阿里云大模型
 # ================= 配置区域 =================
 # 阿里云百炼的兼容 Base URL
-
-

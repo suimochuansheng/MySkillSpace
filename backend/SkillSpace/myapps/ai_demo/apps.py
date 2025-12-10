@@ -1,11 +1,12 @@
-from django.apps import AppConfig
 import threading
+
+from django.apps import AppConfig
 
 
 class AiDemoConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'ai_demo'
-    
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "ai_demo"
+
     def ready(self):
         """
         Django应用启动时调用
@@ -13,18 +14,22 @@ class AiDemoConfig(AppConfig):
         """
         # 避免在runserver的重载监控进程中重复加载
         import os
-        if os.environ.get('RUN_MAIN') != 'true':
+
+        if os.environ.get("RUN_MAIN") != "true":
             return
-        
+
         # 在后台线程中加载模型
         def load_model_async():
             try:
                 from . import model_loader
+
                 model_loader.load_model_on_startup()
             except Exception as e:
                 print(f"❌ 模型加载线程异常：{e}")
-        
+
         # 启动后台线程
-        thread = threading.Thread(target=load_model_async, daemon=True, name="ModelLoader")
+        thread = threading.Thread(
+            target=load_model_async, daemon=True, name="ModelLoader"
+        )
         thread.start()
         print("🚀 AI模型加载线程已启动，服务将立即就绪")
