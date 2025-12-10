@@ -1,5 +1,6 @@
 # tasks_hub/admin.py
 from django.contrib import admin
+
 from .models import AsyncTask
 
 

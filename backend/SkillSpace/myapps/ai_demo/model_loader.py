@@ -1,16 +1,17 @@
 # ai_chat/model_loader.py
-import torch
+import os
+import traceback
+from threading import Lock, Thread
+
 import bitsandbytes as bnb
+import torch
+from modelscope import snapshot_download
 from transformers import (
-    AutoTokenizer,
     AutoModelForCausalLM,
+    AutoTokenizer,
     BitsAndBytesConfig,
     TextIteratorStreamer,
 )
-from modelscope import snapshot_download
-from threading import Lock, Thread
-import traceback
-import os
 
 model_lock = Lock()
 

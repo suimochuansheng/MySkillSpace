@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import User, Role, Menu
+
+from .models import Menu, Role, User
 
 
 # 注册 Menu

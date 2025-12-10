@@ -1,5 +1,6 @@
-from django.apps import AppConfig
 import threading
+
+from django.apps import AppConfig
 
 
 class AiDemoConfig(AppConfig):

@@ -1,11 +1,12 @@
 # 文件路径: backend/myapps/resume/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .serializers import ResumeDiagnosisSerializer
-from .utils import extract_text_from_file
 from .services import ai_analyze_resume
+from .utils import extract_text_from_file
 
 
 class ResumeDiagnosisView(APIView):

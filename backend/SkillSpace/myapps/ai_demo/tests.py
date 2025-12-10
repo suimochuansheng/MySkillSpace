@@ -1,11 +1,12 @@
 # ai_demo/tests.py
 # AI模块测试用例
 
-from django.test import TestCase
-from rest_framework.test import APIClient
-from rest_framework import status
 import json
 import os  # 新增：用于环境变量检测
+
+from django.test import TestCase
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 class QwenChatAPITestCase(TestCase):

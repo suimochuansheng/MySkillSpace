@@ -1,9 +1,9 @@
 # 文件路径: backend/myapps/resume/services.py
 
-from openai import OpenAI
-import os
 import json
+import os
 
+from openai import OpenAI
 
 # 推荐模型：
 # qwen-plus (性价比高，能力强)

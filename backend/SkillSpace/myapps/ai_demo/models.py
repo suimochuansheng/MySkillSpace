@@ -1,9 +1,8 @@
+# ai_demo/models.py
 from django.db import models
 
 # Create your models here.
 
-# ai_demo/models.py
-from django.db import models
 
 
 class ChatRecord(models.Model):

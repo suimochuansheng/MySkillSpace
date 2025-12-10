@@ -1,7 +1,8 @@
 # auth_system/serializers.py
-from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import User, Role, Menu
+from rest_framework import serializers
+
+from .models import Menu, Role, User
 
 # ==========================================
 # 新增/修改：RBAC 权限相关序列化器

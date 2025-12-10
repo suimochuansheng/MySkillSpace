@@ -1,14 +1,14 @@
-from django.urls import path
 from auth_system.views import (
-    UserRegistrationView,
-    UserLoginView,
-    UserLogoutView,
     CurrentUserView,
     GetRoutersView,
-    UserManagementViewSet,
-    RoleManagementViewSet,
     MenuManagementViewSet,
+    RoleManagementViewSet,
+    UserLoginView,
+    UserLogoutView,
+    UserManagementViewSet,
+    UserRegistrationView,
 )
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 # 创建路由器用于ViewSet

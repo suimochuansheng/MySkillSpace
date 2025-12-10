@@ -1,17 +1,18 @@
 # auth_system/views.py
-from rest_framework import status, generics, permissions, viewsets
+from django.contrib.auth import login, logout
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import action
-from django.contrib.auth import login, logout
-from .models import User, Menu, Role
+
+from .models import Menu, Role, User
 from .serializers import (
-    UserSerializer,
-    UserRegistrationSerializer,
-    UserLoginSerializer,
-    PasswordChangeSerializer,
     MenuSerializer,
+    PasswordChangeSerializer,
     RoleSerializer,
+    UserLoginSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
 )
 
 

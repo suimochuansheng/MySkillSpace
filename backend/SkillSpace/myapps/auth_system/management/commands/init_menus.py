@@ -3,8 +3,8 @@
 初始化系统菜单的Django管理命令
 使用方法: python manage.py init_menus
 """
-from django.core.management.base import BaseCommand
 from auth_system.models import Menu
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):

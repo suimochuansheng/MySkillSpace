@@ -1,22 +1,21 @@
 # ai_demo/views.py
 # AI模型接口视图，提供通义千问对话服务
 import json
-import time
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.http import StreamingHttpResponse
 import logging
+import time
 import uuid
 
-from .models import ChatRecord
-from .serializers import ChatRecordSerializer, ChatRequestSerializer
-
+from django.http import StreamingHttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # 导入流式生成函数
 from .model_loader import stream_generate_answer
+from .models import ChatRecord
+from .serializers import ChatRecordSerializer, ChatRequestSerializer
 
 logger = logging.getLogger(__name__)
 
