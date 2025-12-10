@@ -68,7 +68,7 @@
             <!-- 菜单管理 -->
             <el-menu-item index="/sys/menu">
               <el-icon><IconMenu /></el-icon>
-              <span>菜单管理</span>
+              <span>菜单管理（未开发）</span>
             </el-menu-item>
           </el-sub-menu>
 
@@ -78,15 +78,15 @@
 
             <el-menu-item index="resume">
               <el-icon><Document /></el-icon>
-              <span>简历管理</span>
+              <span>AI简历中诊断</span>
             </el-menu-item>
             <el-menu-item index="tasks">
               <el-icon><List /></el-icon>
-              <span>任务中心</span>
+              <span>任务中心（未开发）</span>
             </el-menu-item>
             <el-menu-item index="analytics">
               <el-icon><DataAnalysis /></el-icon>
-              <span>数据分析</span>
+              <span>数据分析（未开发）</span>
             </el-menu-item>
             <el-menu-item index="ai">
               <el-icon><ChatDotRound /></el-icon>

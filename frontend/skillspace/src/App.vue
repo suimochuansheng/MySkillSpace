@@ -9,7 +9,7 @@ const currentPage = ref('login');
 // 检查是否已登录
 onMounted(() => {
   const user = localStorage.getItem('user');
-  console.log('User:', user);
+  // console.log('User:', user);
   if (user) {
     // 已登录，显示仪表板
     currentPage.value = 'dashboard';
