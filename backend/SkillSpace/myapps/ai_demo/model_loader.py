@@ -208,6 +208,7 @@ def stream_generate_answer(prompt: str, history: list = None):
 
     # 1. 构建 Prompt
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # 追加历史记录 (限制最近 10 轮，防止显存爆满)
     for msg in history[-10:]:
         role = "user" if msg.get("role") == "user" else "assistant"
         messages.append({"role": role, "content": msg.get("content")})
