@@ -1,34 +1,59 @@
-# Django
-*.log
-*.pot
+# ================= Python / Django 后端 =================
+# Python 字节码
 *.pyc
+*.pyo
+*.pyd
 __pycache__/
-local_settings.py
-.env
+*$py.class
 
-# Virtual Environment
-sk_venv/
+# 虚拟环境
 venv/
 env/
-.env/
+.venv/
+ENV/
+venv.bak/
+env.bak/
 
-# Database
-*.sqlite3
+# Django 数据库
+db.sqlite3
+db.sqlite3-journal
 *.db
 
-# Media files
-media/
-
-# Static files
+# Django 静态文件
 staticfiles/
 
-# IDE
+# Django 媒体文件
+media/
+
+# 环境变量（敏感信息）
+.env
+.env.*
+!.env.example
+
+# 日志文件
+*.log
+
+# ================= IDE / 编辑器 =================
+# JetBrains IDEs
 .idea/
+
+# Visual Studio Code
 .vscode/
+
+# Vim
 *.swp
 *.swo
+
+# Emacs
 *~
 
-# OS
+# ================= 操作系统文件 =================
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
