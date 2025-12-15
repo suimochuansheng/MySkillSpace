@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Menu, Role, User
+from .permissions import ActionPermission, permission_required
+from .log_utils import record_login_log
 from .serializers import (
     MenuSerializer,
     PasswordChangeSerializer,
@@ -77,6 +79,18 @@ class UserLoginView(APIView):
         serializer = UserLoginSerializer(
             data=request.data, context={"request": request}
         )
+
+        # 验证失败记录日志
+        if not serializer.is_valid():
+            account = request.data.get('account', '未知账号')
+            record_login_log(
+                request,
+                username=account,
+                status='1',
+                msg='账户或密码错误'
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
@@ -98,7 +112,15 @@ class UserLoginView(APIView):
             if menu.perms:
                 perms.add(menu.perms)
 
-        # 5. 返回完整数据
+        # 5. 记录登录成功日志
+        record_login_log(
+            request,
+            username=user.email,
+            status='0',
+            msg='登录成功'
+        )
+
+        # 6. 返回完整数据
         return Response(
             {
                 "code": 200,
@@ -216,24 +238,47 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ActionPermission]
+
+    # 权限映射：定义每个action需要的权限
+    permission_map = {
+        'list': 'system:user:list',        # 查看用户列表
+        'retrieve': 'system:user:query',   # 查看用户详情
+        'create': 'system:user:add',       # 新增用户
+        'update': 'system:user:edit',      # 编辑用户
+        'partial_update': 'system:user:edit',  # 部分更新用户
+        'destroy': 'system:user:delete',   # 删除用户
+        'reset_password': 'system:user:resetPwd',  # 重置密码
+        'assign_roles': 'system:user:assign',      # 分配角色
+    }
 
     def get_queryset(self):
         # 可以根据需要添加过滤逻辑
         return User.objects.all().order_by("-date_joined")
 
     @action(detail=True, methods=["post"])
+    @permission_required('system:user:resetPwd')
     def reset_password(self, request, pk=None):
-        """重置用户密码"""
+        """重置用户密码（仅管理员）"""
         user = self.get_object()
-        new_password = request.data.get("new_password", "123456")
+        new_password = request.data.get("new_password")
+
+        # 验证新密码
+        if not new_password or len(new_password) < 6:
+            return Response(
+                {"detail": "密码至少需要6位字符"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         user.set_password(new_password)
         user.save()
-        return Response({"message": "密码重置成功"})
+
+        return Response({"message": f"用户 {user.username} 的密码已重置"})
 
     @action(detail=True, methods=["post"])
+    @permission_required('system:user:assign')
     def assign_roles(self, request, pk=None):
-        """为用户分配角色"""
+        """为用户分配角色（仅管理员）"""
         user = self.get_object()
         role_ids = request.data.get("role_ids", [])
         roles = Role.objects.filter(id__in=role_ids)
@@ -253,11 +298,23 @@ class RoleManagementViewSet(viewsets.ModelViewSet):
 
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ActionPermission]
+
+    # 权限映射：定义每个action需要的权限
+    permission_map = {
+        'list': 'system:role:list',        # 查看角色列表
+        'retrieve': 'system:role:query',   # 查看角色详情
+        'create': 'system:role:add',       # 新增角色
+        'update': 'system:role:edit',      # 编辑角色
+        'partial_update': 'system:role:edit',  # 部分更新角色
+        'destroy': 'system:role:delete',   # 删除角色
+        'assign_menus': 'system:role:assign',  # 分配菜单权限
+    }
 
     @action(detail=True, methods=["post"])
+    @permission_required('system:role:assign')
     def assign_menus(self, request, pk=None):
-        """为角色分配菜单权限"""
+        """为角色分配菜单权限（仅管理员）"""
         role = self.get_object()
         menu_ids = request.data.get("menu_ids", [])
         menus = Menu.objects.filter(id__in=menu_ids)
@@ -279,7 +336,18 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
 
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [ActionPermission]
+
+    # 权限映射：定义每个action需要的权限
+    permission_map = {
+        'list': 'system:menu:list',        # 查看菜单列表
+        'retrieve': 'system:menu:query',   # 查看菜单详情
+        'create': 'system:menu:add',       # 新增菜单
+        'update': 'system:menu:edit',      # 编辑菜单
+        'partial_update': 'system:menu:edit',  # 部分更新菜单
+        'destroy': 'system:menu:delete',   # 删除菜单
+        'tree': 'system:menu:list',        # 获取菜单树
+    }
 
     # 系统核心菜单名称，不允许删除
     PROTECTED_MENUS = ["系统管理", "用户管理", "角色管理", "菜单管理"]
@@ -297,6 +365,13 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": f"「{instance.name}」是系统核心功能，不允许删除"},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 检查是否有子菜单
+        if instance.children.exists():
+            return Response(
+                {"detail": f"「{instance.name}」下还有子菜单，请先删除子菜单"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # 执行删除
