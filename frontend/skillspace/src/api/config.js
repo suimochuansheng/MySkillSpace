@@ -6,7 +6,8 @@
 
 // 后端API基础URL
 // 开发环境使用localhost，生产环境需要修改为实际域名
-export const API_BASE_URL = 'http://localhost:8000';
+// ⚠️ 开发环境下使用空字符串，依赖Vite代理转发到后端
+export const API_BASE_URL = '';
 
 // API端点路径配置
 export const API_ENDPOINTS = {
@@ -23,6 +24,9 @@ export const API_ENDPOINTS = {
     USERS: '/api/auth/users/',           // 用户管理
     ROLES: '/api/auth/roles/',           // 角色管理
     MENUS: '/api/auth/menus/',           // 菜单管理
+    // 日志管理相关接口
+    OPERATION_LOGS: '/api/auth/operationlogs/',  // 操作日志
+    LOGIN_LOGS: '/api/auth/loginlogs/',          // 登录日志
   },
   // 简历相关接口（预留）
   RESUME: {
@@ -31,6 +35,10 @@ export const API_ENDPOINTS = {
   // 任务相关接口（预留）
   TASKS: {
     TRIGGER: '/api/tasks/trigger/',
+  },
+  // 系统监控相关接口
+  MONITOR: {
+    SYSTEM_STATUS: '/api/monitor/system/status/',  // 系统状态
   }
 };
 

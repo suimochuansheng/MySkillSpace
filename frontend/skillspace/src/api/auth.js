@@ -227,6 +227,34 @@ export const menuManagement = {
   }
 };
 
+/**
+ * 操作日志管理API
+ */
+export const operationLogManagement = {
+  // 获取操作日志列表
+  getList: async (params) => {
+    return http.get(API_ENDPOINTS.AUTH.OPERATION_LOGS, { params });
+  },
+  // 获取操作日志详情
+  getDetail: async (id) => {
+    return http.get(`${API_ENDPOINTS.AUTH.OPERATION_LOGS}${id}/`);
+  }
+};
+
+/**
+ * 登录日志管理API
+ */
+export const loginLogManagement = {
+  // 获取登录日志列表
+  getList: async (params) => {
+    return http.get(API_ENDPOINTS.AUTH.LOGIN_LOGS, { params });
+  },
+  // 获取登录日志详情
+  getDetail: async (id) => {
+    return http.get(`${API_ENDPOINTS.AUTH.LOGIN_LOGS}${id}/`);
+  }
+};
+
 // 导出所有认证API为默认对象（可选的导出方式）
 export default {
   login,
@@ -238,5 +266,7 @@ export default {
   getRouters,
   userManagement,
   roleManagement,
-  menuManagement
+  menuManagement,
+  operationLogManagement,
+  loginLogManagement
 };

@@ -4,8 +4,9 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 
-from .models import Menu, Role, User
+from .models import Menu, Role, User, OperationLog, LoginLog
 from .permissions import ActionPermission, permission_required
 from .log_utils import record_login_log
 from .serializers import (
@@ -15,6 +16,8 @@ from .serializers import (
     UserLoginSerializer,
     UserRegistrationSerializer,
     UserSerializer,
+    OperationLogSerializer,
+    LoginLogSerializer,
 )
 
 
@@ -384,3 +387,82 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
         menus = Menu.objects.all().order_by("order_num")
         menu_tree = build_menu_tree(menus)
         return Response(MenuSerializer(menu_tree, many=True).data)
+
+
+# ==========================================
+# 日志管理ViewSet
+# ==========================================
+
+
+class OperationLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    操作日志管理ViewSet（只读）
+    提供操作日志的查询和筛选功能
+    """
+
+    queryset = OperationLog.objects.all()
+    serializer_class = OperationLogSerializer
+    permission_classes = [ActionPermission]
+    pagination_class = PageNumberPagination
+
+    # 权限映射
+    permission_map = {
+        "list": "monitor:operlog:list",
+        "retrieve": "monitor:operlog:query",
+    }
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # 筛选条件
+        username = self.request.query_params.get("username")
+        module = self.request.query_params.get("module")
+        action = self.request.query_params.get("action")
+        status_param = self.request.query_params.get("status")
+
+        if username:
+            queryset = queryset.filter(username__icontains=username)
+        if module:
+            queryset = queryset.filter(module__icontains=module)
+        if action:
+            queryset = queryset.filter(action=action)
+        if status_param is not None:
+            queryset = queryset.filter(status=status_param)
+
+        return queryset.order_by("-created_at")
+
+
+class LoginLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    登录日志管理ViewSet（只读）
+    提供登录日志的查询和筛选功能
+    """
+
+    queryset = LoginLog.objects.all()
+    serializer_class = LoginLogSerializer
+    permission_classes = [ActionPermission]
+    pagination_class = PageNumberPagination
+
+    # 权限映射
+    permission_map = {
+        "list": "monitor:loginlog:list",
+        "retrieve": "monitor:loginlog:query",
+    }
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # 筛选条件
+        username = self.request.query_params.get("username")
+        ip_address = self.request.query_params.get("ip_address")
+        status_param = self.request.query_params.get("status")
+
+        if username:
+            queryset = queryset.filter(username__icontains=username)
+        if ip_address:
+            queryset = queryset.filter(ip_address__icontains=ip_address)
+        if status_param is not None:
+            queryset = queryset.filter(status=status_param)
+
+        return queryset.order_by("-login_time")
+

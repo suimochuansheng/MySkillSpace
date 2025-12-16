@@ -25,11 +25,11 @@ class AiDemoConfig(AppConfig):
 
                 model_loader.load_model_on_startup()
             except Exception as e:
-                print(f"❌ 模型加载线程异常：{e}")
+                print(f"[ERROR] 模型加载线程异常：{e}")
 
         # 启动后台线程
         thread = threading.Thread(
             target=load_model_async, daemon=True, name="ModelLoader"
         )
         thread.start()
-        print("🚀 AI模型加载线程已启动，服务将立即就绪")
+        print("[INFO] AI模型加载线程已启动，服务将立即就绪")

@@ -3,7 +3,11 @@
     <el-card class="page-header">
       <div class="header-actions">
         <h2>菜单管理</h2>
-        <el-button type="primary" @click="handleAdd">
+        <el-button 
+          type="primary" 
+          @click="handleAdd"
+          v-permission="'system:menu:add'"
+        >
           <el-icon><Plus /></el-icon>
           新增菜单
         </el-button>
@@ -41,9 +45,24 @@
         <el-table-column prop="order_num" label="排序" width="80" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" size="small" @click="handleAdd(row)">新增</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="handleEdit(row)"
+              v-permission="'system:menu:edit'"
+            >编辑</el-button>
+            <el-button 
+              type="success" 
+              size="small" 
+              @click="handleAdd(row)"
+              v-permission="'system:menu:add'"
+            >新增</el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="handleDelete(row)"
+              v-permission="'system:menu:delete'"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>

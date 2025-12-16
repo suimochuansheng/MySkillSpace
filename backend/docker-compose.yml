@@ -86,6 +86,9 @@ volumes:
 networks:
   skillspace_net:
     driver: bridge
+
+
+  
   # 5. Django Web 服务
   # web:
   #   build: .

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite 代理测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .test-section {
+      margin-bottom: 25px;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+
+    .test-section h2 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .test-section h2::before {
+      content: '🧪';
+      font-size: 24px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .result.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .result.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .result.info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-indicator.success { background: #28a745; }
+    .status-indicator.error { background: #dc3545; }
+    .status-indicator.pending { background: #ffc107; }
+
+    .checklist {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 6px;
+    }
+
+    .checklist h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .checklist ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .checklist li {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .badge.ready { background: #d4edda; color: #155724; }
+    .badge.not-ready { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Vite 代理配置测试</h1>
+    <p class="subtitle">测试前后端连接和代理配置是否正确</p>
+
+    <!-- 测试 1: 后端健康检查 -->
+    <div class="test-section">
+      <h2>测试 1: 后端服务健康检查</h2>
+      <button onclick="testBackendHealth()">运行测试</button>
+      <div id="health-result"></div>
+    </div>
+
+    <!-- 测试 2: API 代理 -->
+    <div class="test-section">
+      <h2>测试 2: HTTP API 代理</h2>
+      <button onclick="testApiProxy()">运行测试</button>
+      <div id="api-result"></div>
+    </div>
+
+    <!-- 测试 3: CORS 和 Cookie -->
+    <div class="test-section">
+      <h2>测试 3: CORS 和 Cookie</h2>
+      <button onclick="testCors()">运行测试</button>
+      <div id="cors-result"></div>
+    </div>
+
+    <!-- 测试 4: WebSocket -->
+    <div class="test-section">
+      <h2>测试 4: WebSocket 代理</h2>
+      <button onclick="testWebSocket()">运行测试</button>
+      <div id="ws-result"></div>
+    </div>
+
+    <!-- 配置检查清单 -->
+    <div class="checklist">
+      <h3>📋 配置检查清单</h3>
+      <ul id="checklist">
+        <li>
+          <span class="status-indicator pending"></span>
+          后端服务运行在 localhost:8000
+          <span class="badge not-ready" id="badge-backend">未检测</span>
+        </li>
+        <li>
+          <span class="status-indicator pending"></span>
+          Vite 代理配置正确
+          <span class="badge not-ready" id="badge-proxy">未检测</span>
+        </li>
+        <li>
+          <span class="status-indicator pending"></span>
+          CORS 配置正确
+          <span class="badge not-ready" id="badge-cors">未检测</span>
+        </li>
+        <li>
+          <span class="status-indicator pending"></span>
+          WebSocket 连接正常
+          <span class="badge not-ready" id="badge-ws">未检测</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // 测试 1: 后端健康检查
+    async function testBackendHealth() {
+      const resultDiv = document.getElementById('health-result');
+      resultDiv.innerHTML = '<div class="result info">⏳ 正在检测后端服务...</div>';
+
+      try {
+        const response = await fetch('/api/auth/me/', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok || response.status === 401) {
+          resultDiv.innerHTML = `
+            <div class="result success">
+              ✅ 后端服务正常运行！
+
+状态码: ${response.status}
+响应: ${JSON.stringify(data, null, 2)}
+            </div>
+          `;
+          updateBadge('badge-backend', true);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ 后端服务连接失败！
+
+错误: ${error.message}
+
+请检查:
+1. 后端服务是否已启动（localhost:8000）
+2. Vite 代理配置是否正确
+          </div>
+        `;
+        updateBadge('badge-backend', false);
+      }
+    }
+
+    // 测试 2: API 代理
+    async function testApiProxy() {
+      const resultDiv = document.getElementById('api-result');
+      resultDiv.innerHTML = '<div class="result info">⏳ 测试 API 代理...</div>';
+
+      try {
+        // 故意调用一个不需要认证的接口（或401也是正常的）
+        const response = await fetch('/api/auth/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: 'test-proxy',
+            password: 'test-proxy'
+          }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        // 只要能收到响应就说明代理正常（即使是400错误）
+        if (response.status === 400 || response.status === 401 || response.status === 200) {
+          resultDiv.innerHTML = `
+            <div class="result success">
+              ✅ API 代理工作正常！
+
+请求路径: /api/auth/login/
+状态码: ${response.status}
+响应: ${JSON.stringify(data, null, 2)}
+
+说明: 代理已将请求转发到 http://localhost:8000
+            </div>
+          `;
+          updateBadge('badge-proxy', true);
+        } else {
+          throw new Error(`意外的状态码: ${response.status}`);
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ API 代理测试失败！
+
+错误: ${error.message}
+
+可能原因:
+1. Vite 代理未正确配置
+2. 后端服务未启动
+3. 端口配置错误（应该是 8000）
+          </div>
+        `;
+        updateBadge('badge-proxy', false);
+      }
+    }
+
+    // 测试 3: CORS 和 Cookie
+    async function testCors() {
+      const resultDiv = document.getElementById('cors-result');
+      resultDiv.innerHTML = '<div class="result info">⏳ 测试 CORS 和 Cookie...</div>';
+
+      try {
+        // 发送请求并检查 Cookie
+        const response = await fetch('/api/auth/me/', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        // 检查 Cookie
+        const cookies = document.cookie;
+        const hasCsrfToken = cookies.includes('csrftoken');
+        const hasSessionId = cookies.includes('sessionid');
+
+        resultDiv.innerHTML = `
+          <div class="result ${hasCsrfToken ? 'success' : 'info'}">
+            ${hasCsrfToken ? '✅' : 'ℹ️'} CORS 配置正常
+
+Cookie 状态:
+- csrftoken: ${hasCsrfToken ? '✅ 存在' : '❌ 不存在（刷新页面后应该会有）'}
+- sessionid: ${hasSessionId ? '✅ 存在' : '⚠️ 不存在（登录后会生成）'}
+
+当前 Cookie:
+${cookies || '（无）'}
+
+说明: credentials: 'include' 已生效
+          </div>
+        `;
+        updateBadge('badge-cors', true);
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ CORS 测试失败！
+
+错误: ${error.message}
+
+请检查:
+1. 后端 CORS_ALLOW_CREDENTIALS = True
+2. 请求携带 credentials: 'include'
+          </div>
+        `;
+        updateBadge('badge-cors', false);
+      }
+    }
+
+    // 测试 4: WebSocket
+    async function testWebSocket() {
+      const resultDiv = document.getElementById('ws-result');
+      resultDiv.innerHTML = '<div class="result info">⏳ 测试 WebSocket 连接...</div>';
+
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/ai/test-connection/`;
+
+        resultDiv.innerHTML = `
+          <div class="result info">
+            ⏳ 正在连接 WebSocket...
+
+连接地址: ${wsUrl}
+          </div>
+        `;
+
+        const ws = new WebSocket(wsUrl);
+
+        // 设置超时
+        const timeout = setTimeout(() => {
+          ws.close();
+          resultDiv.innerHTML = `
+            <div class="result error">
+              ⏱️ WebSocket 连接超时（5秒）
+
+可能原因:
+1. 后端 WebSocket 服务未启动
+2. Channels 未正确配置
+3. Vite WebSocket 代理未配置
+
+建议:
+- 确保使用 Daphne 启动后端（支持 WebSocket）
+- 检查 vite.config.js 中 /ws 代理配置
+            </div>
+          `;
+          updateBadge('badge-ws', false);
+        }, 5000);
+
+        ws.onopen = () => {
+          clearTimeout(timeout);
+          resultDiv.innerHTML = `
+            <div class="result success">
+              ✅ WebSocket 连接成功！
+
+连接地址: ${wsUrl}
+协议: ${ws.protocol || 'WebSocket'}
+就绪状态: ${ws.readyState} (OPEN)
+
+说明: Vite WebSocket 代理工作正常
+            </div>
+          `;
+          updateBadge('badge-ws', true);
+          ws.close();
+        };
+
+        ws.onerror = (error) => {
+          clearTimeout(timeout);
+          resultDiv.innerHTML = `
+            <div class="result error">
+              ❌ WebSocket 连接失败！
+
+错误: ${error.message || '连接错误'}
+
+请检查:
+1. 后端使用 Daphne 启动（不是 runserver）
+2. Channels 配置正确
+3. vite.config.js 中 /ws 代理已配置
+4. 代理配置包含 ws: true
+            </div>
+          `;
+          updateBadge('badge-ws', false);
+        };
+
+        ws.onclose = (event) => {
+          if (!event.wasClean) {
+            clearTimeout(timeout);
+            resultDiv.innerHTML = `
+              <div class="result error">
+                ❌ WebSocket 连接异常关闭
+
+关闭代码: ${event.code}
+关闭原因: ${event.reason || '未知'}
+              </div>
+            `;
+            updateBadge('badge-ws', false);
+          }
+        };
+
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ WebSocket 测试失败！
+
+错误: ${error.message}
+          </div>
+        `;
+        updateBadge('badge-ws', false);
+      }
+    }
+
+    // 更新徽章状态
+    function updateBadge(badgeId, success) {
+      const badge = document.getElementById(badgeId);
+      if (success) {
+        badge.textContent = '✅ 正常';
+        badge.className = 'badge ready';
+      } else {
+        badge.textContent = '❌ 异常';
+        badge.className = 'badge not-ready';
+      }
+    }
+
+    // 页面加载时显示环境信息
+    window.onload = () => {
+      console.log('🔧 当前环境信息:');
+      console.log('前端地址:', window.location.origin);
+      console.log('预期后端地址: http://localhost:8000');
+      console.log('Cookie:', document.cookie || '（无）');
+    };
+  </script>
+</body>
+</html>
