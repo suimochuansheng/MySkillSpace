@@ -25,7 +25,12 @@
       "WebSearch",
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(python check_admin_permissions.py:*)",
+      "Bash(sk_venvScriptspython.exe check_admin_permissions.py)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(rm:*)"
     ]
   }
 }

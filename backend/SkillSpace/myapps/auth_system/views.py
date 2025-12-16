@@ -176,8 +176,18 @@ class GetRoutersView(APIView):
         # 构建树，通常路由只需 M 和 C 类型
         menu_tree = build_menu_tree(menus.exclude(menu_type="F"))
 
+        # 获取按钮权限标识 (用于页面按钮显隐)
+        perms = set()
+        for menu in menus:
+            if menu.perms:
+                perms.add(menu.perms)
+
         return Response(
-            {"code": 200, "menuList": MenuSerializer(menu_tree, many=True).data}
+            {
+                "code": 200,
+                "menuList": MenuSerializer(menu_tree, many=True).data,
+                "authorities": list(perms),  # 添加权限标识数组
+            }
         )
 
 

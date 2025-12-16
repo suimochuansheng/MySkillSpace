@@ -14,19 +14,12 @@ export const vPermission = {
   mounted(el, binding) {
     const { value } = binding
     const permissionStore = usePermissionStore()
-    const userPermissions = permissionStore.permissions
 
-    if (value && value instanceof Array && value.length > 0) {
-      // 数组模式: 只要有一个权限就显示（OR逻辑）
-      const hasPermission = value.some(perm => userPermissions.includes(perm))
-      if (!hasPermission) {
-        el.style.display = 'none'
-      }
-    } else if (typeof value === 'string') {
-      // 字符串模式: 需要完全匹配
-      if (!userPermissions.includes(value)) {
-        el.style.display = 'none'
-      }
+    // 使用 store 的 hasPermission 方法，会自动处理超级管理员逻辑
+    const hasPermission = permissionStore.hasPermission(value)
+
+    if (!hasPermission) {
+      el.style.display = 'none'
     }
   }
 }

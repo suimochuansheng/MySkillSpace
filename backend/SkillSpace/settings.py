@@ -216,16 +216,15 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # ========== CELERY 配置 ==========
-# CELERY_BROKER_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}//"
-CELERY_BROKER_URL = 'amqp://guest:guest@127.0.0.1:5672//'
+# Celery Broker (使用 RabbitMQ)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
 
 # ========== Result Backend 配置 ==========
-# 方案1: 使用RabbitMQ的RPC后端（推荐，不需要额外服务）
-CELERY_RESULT_BACKEND = 'rpc://'
-
-# 方案2: 使用Redis（如果已启动Redis，可以取消注释下面这行，并注释上面的rpc://）
-# CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
-# CELERY_RESULT_BACKEND = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/1"
+# 使用 Redis 存储任务结果
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    "redis://:123456@localhost:6379/0"
+)
 
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
@@ -273,7 +272,9 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],  # Redis 地址
+            "hosts": [{
+                "address": f"redis://:{os.getenv('REDIS_PASSWORD', '123456')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
+            }],
             "capacity": 1500,  # 每个 channel 最大消息数
             "expiry": 10,  # 消息过期时间（秒）
         },

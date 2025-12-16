@@ -69,6 +69,7 @@ class UserSerializer(serializers.ModelSerializer):
             "roles",
             "role_ids",
             "is_active",
+            "is_superuser",  # 添加超级管理员标识
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
 
