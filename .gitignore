@@ -54,6 +54,9 @@ $RECYCLE.BIN/
 *.sln
 *.sw?
 
+# claude 
+.claude/
+
 # ================= 临时文件 & 日志 =================
 logs/
 tmp/
