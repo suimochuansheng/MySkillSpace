@@ -7,6 +7,6 @@ pymysql.install_as_MySQLdb()
 # pymysql.version_info = (1, 4, 6, 'final', 0)  # 模拟 mysqlclient 的版本号
 
 # 导入 Celery 应用实例
-from .celery import app as celery_app
+from .celery_demo import app as celery_app
 
 __all__ = ("celery_app",)

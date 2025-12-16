@@ -86,9 +86,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { login } from "@/api/auth";  // 导入登录API
-import { ElMessage } from 'element-plus'  // 导入Element Plus的顶部居中提示
+import { login } from "@/api/auth"; // 导入登录API
+import { ElMessage } from 'element-plus'; // 导入Element Plus的顶部居中提示
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from 'vue-router'; // 导入路由
+import { usePermissionStore } from '@/stores/usePermissionStore'; // 导入权限store
+
+// 创建路由实例
+const router = useRouter();
+const permissionStore = usePermissionStore();
 
 // 表单数据
 const account = ref("");  // 支持邮箱或用户名
@@ -178,14 +184,23 @@ const handleLogin = async () => {
       offset: 50
     });
     
-    // 存储用户信息到localStorage（供根组件检测）
+    // 存储用户信息到localStorage（供路由守卫检测）
     if (response.user) {
       localStorage.setItem('user', JSON.stringify(response.user));
     }
     
-    // 延迟跳转，让用户看到成功提示（800毫秒后跳转）
+    // 初始化权限信息（获取菜单和权限标识）
+    try {
+      await permissionStore.initPermissions();
+      console.log('[登录] 权限初始化成功');
+    } catch (error) {
+      console.error('[登录] 权限初始化失败:', error);
+      // 权限初始化失败但不阻止登录流程
+    }
+    
+    // 延迟跳转，让用户看到成功提示（800毫秒后跳转到仪表板）
     setTimeout(() => {
-      window.location.href = '/';
+      router.push('/dashboard');
     }, 800);
     
   } catch (error) {
