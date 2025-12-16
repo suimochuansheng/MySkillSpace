@@ -3,7 +3,11 @@
     <el-card class="page-header">
       <div class="header-actions">
         <h2>角色管理</h2>
-        <el-button type="primary" @click="handleAdd">
+        <el-button 
+          type="primary" 
+          @click="handleAdd"
+          v-permission="'system:role:add'"
+        >
           <el-icon><Plus /></el-icon>
           新增角色
         </el-button>
@@ -36,9 +40,24 @@
         <el-table-column prop="create_time" label="创建时间" width="180" />
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" size="small" @click="handleAssignMenu(row)">分配权限</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="handleEdit(row)"
+              v-permission="'system:role:edit'"
+            >编辑</el-button>
+            <el-button 
+              type="success" 
+              size="small" 
+              @click="handleAssignMenu(row)"
+              v-permission="'system:role:assign'"
+            >分配权限</el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="handleDelete(row)"
+              v-permission="'system:role:delete'"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -84,19 +103,61 @@
     </el-dialog>
 
     <!-- 分配权限对话框 -->
-    <el-dialog 
-      v-model="menuDialogVisible" 
+    <el-dialog
+      v-model="menuDialogVisible"
       title="分配菜单权限"
-      width="500px"
+      width="600px"
+      @open="handleMenuDialogOpen"
     >
-      <el-tree
-        ref="menuTreeRef"
-        :data="menuTreeData"
-        show-checkbox
-        node-key="id"
-        :default-checked-keys="checkedMenuIds"
-        :props="{ children: 'children', label: 'name' }"
-      />
+      <div class="menu-dialog-content">
+        <!-- 角色信息提示 -->
+        <el-alert
+          :title="`正在为角色 '${currentRoleName}' 分配权限`"
+          type="info"
+          :closable="false"
+          style="margin-bottom: 16px;"
+        />
+
+        <!-- 操作工具栏 -->
+        <div class="menu-toolbar">
+          <div class="toolbar-left">
+            <el-button size="small" @click="handleCheckAll">全选</el-button>
+            <el-button size="small" @click="handleUncheckAll">取消全选</el-button>
+            <el-button size="small" @click="handleExpandAll">展开全部</el-button>
+            <el-button size="small" @click="handleCollapseAll">折叠全部</el-button>
+          </div>
+          <div class="toolbar-right">
+            <el-tag type="success">已选: {{ checkedCount }} 项</el-tag>
+          </div>
+        </div>
+
+        <!-- 权限树 -->
+        <div class="menu-tree-container">
+          <el-tree
+            ref="menuTreeRef"
+            :data="menuTreeData"
+            show-checkbox
+            node-key="id"
+            :default-checked-keys="checkedMenuIds"
+            :default-expand-all="false"
+            :props="{ children: 'children', label: 'name' }"
+            :check-strictly="false"
+            @check="handleTreeCheck"
+          >
+            <template #default="{ node, data }">
+              <span class="custom-tree-node">
+                <el-icon v-if="data.icon" style="margin-right: 8px;">
+                  <component :is="data.icon" />
+                </el-icon>
+                <span>{{ node.label }}</span>
+                <el-tag v-if="data.type" size="small" style="margin-left: 8px;">
+                  {{ data.type === 'menu' ? '菜单' : '按钮' }}
+                </el-tag>
+              </span>
+            </template>
+          </el-tree>
+        </div>
+      </div>
       <template #footer>
         <el-button @click="menuDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleMenuSubmit">确定</el-button>
@@ -148,6 +209,81 @@ const menuTreeRef = ref(null);
 const menuTreeData = ref([]);
 const checkedMenuIds = ref([]);
 const currentRoleId = ref(null);
+const currentRoleName = ref('');
+const checkedCount = ref(0);
+
+// 获取所有节点ID（用于全选）
+const getAllNodeIds = (nodes) => {
+  const ids = [];
+  const traverse = (list) => {
+    list.forEach(node => {
+      ids.push(node.id);
+      if (node.children && node.children.length > 0) {
+        traverse(node.children);
+      }
+    });
+  };
+  traverse(nodes);
+  return ids;
+};
+
+// 菜单对话框打开时的处理
+const handleMenuDialogOpen = () => {
+  // 初始化选中数量
+  updateCheckedCount();
+};
+
+// 更新选中数量
+const updateCheckedCount = () => {
+  if (menuTreeRef.value) {
+    const checkedKeys = menuTreeRef.value.getCheckedKeys();
+    checkedCount.value = checkedKeys.length;
+  }
+};
+
+// 树节点选中变化时
+const handleTreeCheck = () => {
+  updateCheckedCount();
+};
+
+// 全选
+const handleCheckAll = () => {
+  const allIds = getAllNodeIds(menuTreeData.value);
+  menuTreeRef.value.setCheckedKeys(allIds);
+  updateCheckedCount();
+};
+
+// 取消全选
+const handleUncheckAll = () => {
+  menuTreeRef.value.setCheckedKeys([]);
+  updateCheckedCount();
+};
+
+// 展开全部
+const handleExpandAll = () => {
+  const expandAllNodes = (nodes) => {
+    nodes.forEach(node => {
+      menuTreeRef.value.store.nodesMap[node.id].expanded = true;
+      if (node.children && node.children.length > 0) {
+        expandAllNodes(node.children);
+      }
+    });
+  };
+  expandAllNodes(menuTreeData.value);
+};
+
+// 折叠全部
+const handleCollapseAll = () => {
+  const collapseAllNodes = (nodes) => {
+    nodes.forEach(node => {
+      menuTreeRef.value.store.nodesMap[node.id].expanded = false;
+      if (node.children && node.children.length > 0) {
+        collapseAllNodes(node.children);
+      }
+    });
+  };
+  collapseAllNodes(menuTreeData.value);
+};
 
 // 获取角色列表
 const fetchRoleList = async () => {
@@ -239,11 +375,12 @@ const handleSubmit = async () => {
 // 分配权限
 const handleAssignMenu = async (row) => {
   currentRoleId.value = row.id;
+  currentRoleName.value = row.name;
   try {
     // 获取菜单树
     const menus = await menuManagement.getTree();
     menuTreeData.value = menus;
-    
+
     // 获取已分配的菜单
     const roleDetail = await roleManagement.getMenus(row.id);
     if (roleDetail.menus && Array.isArray(roleDetail.menus)) {
@@ -251,7 +388,7 @@ const handleAssignMenu = async (row) => {
     } else {
       checkedMenuIds.value = [];
     }
-    
+
     menuDialogVisible.value = true;
   } catch (error) {
     console.error('获取菜单数据失败:', error);
@@ -326,5 +463,89 @@ onMounted(() => {
 .el-pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+/* 菜单权限对话框样式 */
+.menu-dialog-content {
+  max-height: 600px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.menu-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 400px;
+  background: #fff;
+}
+
+.custom-tree-node {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+/* 树节点样式优化 */
+.menu-tree-container :deep(.el-tree-node__content) {
+  height: 36px;
+  line-height: 36px;
+}
+
+.menu-tree-container :deep(.el-tree-node__content:hover) {
+  background-color: #f5f7fa;
+}
+
+.menu-tree-container :deep(.el-tree-node.is-current > .el-tree-node__content) {
+  background-color: #e6f7ff;
+}
+
+/* 复选框样式 */
+.menu-tree-container :deep(.el-checkbox__inner) {
+  width: 16px;
+  height: 16px;
+}
+
+/* 展开/折叠图标样式 */
+.menu-tree-container :deep(.el-tree-node__expand-icon) {
+  font-size: 14px;
+  color: #606266;
+}
+
+/* 滚动条美化 */
+.menu-tree-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu-tree-container::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+}
+
+.menu-tree-container::-webkit-scrollbar-thumb:hover {
+  background: #c0c4cc;
 }
 </style>

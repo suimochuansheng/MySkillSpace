@@ -54,8 +54,11 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+       "daphne",  # Channels ASGI 服务器（必须放在staticfiles前面）
     "django.contrib.staticfiles",
     # 第三方应用
+ 
+    "channels",  # WebSocket 支持
     "rest_framework",
     "corsheaders",
     # myapps
@@ -63,6 +66,7 @@ INSTALLED_APPS = [
     "resume",
     "auth_system",  # 用户认证系统
     "ai_demo",  # 人工智能Demo
+    "monitor",  # 系统监控
 ]
 
 MIDDLEWARE = [
@@ -75,6 +79,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # 操作日志中间件 - 记录所有API操作
+    "auth_system.middleware.OperationLogMiddleware",
 ]
 # CORS配置：仅允许指定来源（不使用 CORS_ALLOW_ALL_ORIGINS）
 CORS_ALLOWED_ORIGINS = [
@@ -124,11 +130,10 @@ WSGI_APPLICATION = "SkillSpace.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# 根据环境变量选择数据库：CI 环境使用 SQLite，本地/生产使用 MySQL
 if os.getenv("DB_NAME"):  # 如果配置了数据库名，使用 MySQL
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.mysql",
+            "ENGINE": os.getenv("DB_ENGINE", ""),
             "NAME": os.getenv("DB_NAME", ""),
             "USER": os.getenv("DB_USER", ""),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
@@ -211,15 +216,25 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # ========== CELERY 配置 ==========
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv(
-    "CELERY_RESULT_BACKEND", "redis://localhost:6379/0"
-)  # 使用 Redis 存储结果
+# CELERY_BROKER_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}//"
+CELERY_BROKER_URL = 'amqp://guest:guest@127.0.0.1:5672//'
+
+# ========== Result Backend 配置 ==========
+# 方案1: 使用RabbitMQ的RPC后端（推荐，不需要额外服务）
+CELERY_RESULT_BACKEND = 'rpc://'
+
+# 方案2: 使用Redis（如果已启动Redis，可以取消注释下面这行，并注释上面的rpc://）
+# CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+# CELERY_RESULT_BACKEND = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/1"
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "Asia/Shanghai"  # 设置 Celery 时区
-CELERY_ENABLE_UTC = True  # 启用 UTC 时间
+CELERY_TIMEZONE = "Asia/Shanghai"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30分钟超时
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # ✅ 改为 1（重要！）
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 50  # ✅ 新增：每50个任务重启Worker
 
 # ========== 邮件配置（用于测试）==========
 EMAIL_BACKEND = (
@@ -248,6 +263,22 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  # 你的前端地址
     "http://127.0.0.1:5173",  # 可选，防止IP访问的情况
 ]
+
+# ========== Django Channels 配置 ==========
+# 指定 ASGI 应用（取代 WSGI）
+ASGI_APPLICATION = "SkillSpace.asgi.application"
+
+# Channel Layer 配置（使用 Redis 作为消息传输层）
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],  # Redis 地址
+            "capacity": 1500,  # 每个 channel 最大消息数
+            "expiry": 10,  # 消息过期时间（秒）
+        },
+    },
+}
 
 # AI 阿里云大模型
 # ================= 配置区域 =================

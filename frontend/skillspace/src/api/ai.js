@@ -53,7 +53,7 @@ export const sendQuestionStream = async (prompt, sessionId = null, onChunk = () 
   if (sessionId) {
     requestData.session_id = sessionId;
   }
-  console.log('[sendQuestionStream] 请求数据:', requestData);
+  // console.log('[sendQuestionStream] 请求数据:', requestData);
   const response = await fetch('/api/ai/qwen/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

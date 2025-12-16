@@ -86,7 +86,7 @@
             </el-menu-item>
             <el-menu-item index="analytics">
               <el-icon><DataAnalysis /></el-icon>
-              <span>数据分析（未开发）</span>
+              <span>系统监控</span>
             </el-menu-item>
             <el-menu-item index="ai">
               <el-icon><ChatDotRound /></el-icon>
@@ -141,33 +141,37 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, shallowRef } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { 
-  Document, 
-  List, 
-  DataAnalysis, 
-  User, 
-  SwitchButton, 
-  ChatDotRound, 
-  Check,
-  Setting,
-  Avatar,
-  Menu as IconMenu
-} from '@element-plus/icons-vue';
 import { authAPI } from '@/api';
+import {
+    Avatar,
+    ChatDotRound,
+    Check,
+    DataAnalysis,
+    Document,
+    Menu as IconMenu,
+    List,
+    Setting,
+    SwitchButton,
+    User
+} from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { computed, onMounted, ref, shallowRef } from 'vue';
+import { useRouter } from 'vue-router'; // 导入路由
+
+// 创建路由实例
+const router = useRouter();
 
 // 导入模块组件
-import ResumeModule from './modules/ResumeModule.vue';
-import TasksModule from './modules/TasksModule.vue';
+import AiModule from './modules/AiModule.vue';
 import AnalyticsModule from './modules/AnalyticsModule.vue';
 import ProfileModule from './modules/ProfileModule.vue';
-import AiModule from './modules/AiModule.vue';
+import ResumeModule from './modules/ResumeModule.vue';
+import TasksModule from './modules/TasksModule.vue';
 
 // 导入权限管理组件
-import UserManagement from '../sys/user/index.vue';
-import RoleManagement from '../sys/role/index.vue';
 import MenuManagement from '../sys/menu/index.vue';
+import RoleManagement from '../sys/role/index.vue';
+import UserManagement from '../sys/user/index.vue';
 
 // 当前激活的模块
 const activeModule = ref('resume');
@@ -278,11 +282,12 @@ const handleUserCommand = async (command) => {
       
       // 清除本地存储的用户信息
       localStorage.removeItem('user');
+      localStorage.removeItem('userAvatar');
       
       ElMessage.success('退出登录成功');
       
       // 跳转到登录页面
-      window.location.href = '/';
+      router.push('/login');
       
     } catch (error) {
       if (error !== 'cancel') {

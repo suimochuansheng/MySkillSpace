@@ -42,7 +42,7 @@
 | **核心框架** | Django 4.2.x | Python Web 框架 |
 | **API框架** | Django REST Framework | RESTful API 构建 |
 | **数据库** | SQLite / MySQL 8.0 | 开发/生产环境（SQLite用于开发） |
-| **异步任务** | Celery 5.5.x | 分布式任务队列 |
+| **异步任务** | Celery 5.5.x | 分布式任务队列 |rabbitmq | 作为任务队列的中间件
 | **消息队列** | Redis | Celery Broker 与结果后端 |
 | **缓存** | Redis 6.2 | 缓存与会话存储 |
 | **跨域处理** | django-cors-headers | CORS 跨域配置 |
@@ -116,7 +116,7 @@ source venv/bin/activate
 
 ```bash
 # 安装Python依赖
-pip install -r requirements_py39.txt
+pip install -r requirements.txt
 
 # 如需GPU支持（CUDA 11.8）
 pip install torch==2.1.2+cu118 torchaudio==2.1.2+cu118 torchvision==0.16.2+cu118 --index-url https://download.pytorch.org/whl/cu118
@@ -214,6 +214,98 @@ npm run build
 # 预览构建结果
 npm run preview
 ```
+
+---
+
+## 🛠️ VSCode 开发环境配置
+
+### 一键启动调试
+
+本项目已配置完整的 VSCode 调试环境，支持：
+
+- ✅ Django 后端调试（支持断点、变量监视、调用堆栈）
+- ✅ 单个 Python 文件独立运行和调试
+- ✅ Celery 异步任务调试
+- ✅ 前后端同时启动（全栈调试）
+- ✅ Django 管理命令调试（migrate、makemigrations等）
+
+### 快速开始
+
+1. **打开工作区**
+   ```bash
+   code skillspace.code-workspace
+   ```
+
+2. **安装推荐扩展**
+   - VSCode 会自动提示安装推荐扩展
+   - 点击"安装所有"
+
+3. **选择 Python 解释器**
+   - 按 `Ctrl+Shift+P`
+   - 输入 `Python: Select Interpreter`
+   - 选择 `.venv\Scripts\python.exe`
+
+4. **启动调试**
+   - 按 `F5`
+   - 选择 `Django: 启动后端服务器`
+   - 开始调试！
+
+### 调试配置说明
+
+| 配置名称 | 快捷键 | 用途 |
+|---------|--------|------|
+| Django: 启动后端服务器 | F5 | 完整功能开发（启用AI） |
+| Django: 启动后端服务器 (禁用AI) | F5 | 快速启动（禁用AI模型） |
+| Python: 当前文件 | F5 | 运行当前Python文件 |
+| 全栈调试: Django + 前端 | F5 | 同时启动前后端 |
+| Celery: 启动Worker | F5 | 异步任务调试 |
+| 测试: RabbitMQ连接 | F5 | 测试消息队列连接 |
+
+### 常用任务
+
+按 `Ctrl+Shift+P` → `Tasks: Run Task` 可执行以下任务：
+
+- **前端: 启动开发服务器** - 启动 Vite 开发服务器
+- **Django: 数据库迁移** - 执行数据库迁移
+- **Docker: 启动所有服务** - 启动 MySQL/RabbitMQ/Redis
+- **初始化: 完整项目设置** - 一键初始化项目环境
+
+### 调试技巧
+
+#### 设置断点
+1. 点击代码行号左侧设置断点
+2. 按 `F5` 启动调试
+3. 触发断点（访问对应接口）
+4. 使用调试控制台查看变量
+
+#### 条件断点
+右键断点 → 编辑断点 → 添加条件：
+```python
+user.username == "admin"
+```
+
+#### 日志断点
+右键断点 → 编辑断点 → Logpoint：
+```python
+f"用户 {user.username} 正在登录"
+```
+
+### 详细文档
+
+- [VSCode 配置详细文档](.vscode/README.md) - 660行完整指南
+- [快速参考卡片](VSCODE_DEBUG_GUIDE.md) - 速查手册
+- [配置总结](VSCODE_CONFIGURATION_SUMMARY.md) - 配置说明
+
+### celery_test.py 运行说明
+
+**问题**: 直接运行 `celery_test.py` 会报模块导入错误
+
+**原因**: 项目中存在 `celery.py` 文件，导致模块命名冲突
+
+**解决方案**: 使用 VSCode 调试配置
+1. 按 `F5`
+2. 选择 `测试: RabbitMQ连接`
+3. 查看输出结果
 
 ---
 

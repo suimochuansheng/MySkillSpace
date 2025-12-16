@@ -2,7 +2,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from .models import Menu, Role, User
+from .models import Menu, Role, User, OperationLog, LoginLog
 
 # ==========================================
 # 新增/修改：RBAC 权限相关序列化器
@@ -207,3 +207,72 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save()
         return user
+
+
+# ==========================================
+# 日志相关序列化器
+# ==========================================
+
+
+class OperationLogSerializer(serializers.ModelSerializer):
+    """
+    操作日志序列化器
+    """
+
+    status_display = serializers.SerializerMethodField()
+    action_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OperationLog
+        fields = [
+            "id",
+            "username",
+            "module",
+            "action",
+            "action_display",
+            "description",
+            "method",
+            "url",
+            "ip_address",
+            "user_agent",
+            "status",
+            "status_display",
+            "error_msg",
+            "created_at",
+            "duration",
+        ]
+        read_only_fields = fields
+
+    def get_status_display(self, obj):
+        return "成功" if obj.status == "0" else "失败"
+
+    def get_action_display(self, obj):
+        return obj.get_action_display()
+
+
+class LoginLogSerializer(serializers.ModelSerializer):
+    """
+    登录日志序列化器
+    """
+
+    status_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LoginLog
+        fields = [
+            "id",
+            "username",
+            "ip_address",
+            "login_location",
+            "browser",
+            "os",
+            "device",
+            "status",
+            "status_display",
+            "msg",
+            "login_time",
+        ]
+        read_only_fields = fields
+
+    def get_status_display(self, obj):
+        return "成功" if obj.status == "0" else "失败"

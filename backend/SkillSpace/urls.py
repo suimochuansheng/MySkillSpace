@@ -30,6 +30,8 @@ urlpatterns = [
     path("api/auth/", include("auth_system.urls")),
     # ai 模型接口
     path("api/ai/", include("ai_demo.urls")),  # 人工智能模型接口
+    # 系统监控接口
+    path("api/monitor/", include("monitor.urls")),  # 系统监控接口
 ]
 
 # 开发环境下提供media文件访问

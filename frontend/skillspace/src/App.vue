@@ -1,25 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import LoginPage from "@/views/login/LoginPage.vue";
-import DashboardPage from "@/views/dashboard/DashboardPage.vue";
-
-// 当前显示的页面
-const currentPage = ref('login');
-
-// 检查是否已登录
-onMounted(() => {
-  const user = localStorage.getItem('user');
-  // console.log('User:', user);
-  if (user) {
-    // 已登录，显示仪表板
-    currentPage.value = 'dashboard';
-  }
-});
+// 使用 Vue Router 管理页面导航
+// 路由配置文件: src/router/index.js
 </script>
 
 <template>
-  <LoginPage v-if="currentPage === 'login'" />
-  <DashboardPage v-else-if="currentPage === 'dashboard'" />
+  <!-- 路由视图容器，根据当前路由动态显示对应组件 -->
+  <router-view />
 </template>
 
 <style scoped>

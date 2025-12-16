@@ -3,7 +3,11 @@
     <el-card class="page-header">
       <div class="header-actions">
         <h2>用户管理</h2>
-        <el-button type="primary" @click="handleAdd">
+        <el-button 
+          type="primary" 
+          @click="handleAdd"
+          v-permission="'system:user:add'"
+        >
           <el-icon><Plus /></el-icon>
           新增用户
         </el-button>
@@ -42,11 +46,40 @@
           </template>
         </el-table-column>
         <el-table-column prop="date_joined" label="创建时间" width="180" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="warning" size="small" @click="handleAssignRole(row)">分配角色</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="handleEdit(row)"
+              v-permission="'system:user:edit'"
+            >编辑</el-button>
+            <el-button 
+              type="warning" 
+              size="small" 
+              @click="handleAssignRole(row)"
+              v-permission="'system:user:assign'"
+            >分配角色</el-button>
+            <el-button 
+              type="info" 
+              size="small" 
+              @click="handleResetPassword(row)"
+              v-permission="'system:user:resetPwd'"
+            >重置密码</el-button>
+            <el-button
+              :type="row.is_active ? 'danger' : 'success'"
+              size="small"
+              @click="handleToggleStatus(row)"
+              v-permission="'system:user:edit'"
+            >
+              {{ row.is_active ? '禁用' : '启用' }}
+            </el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="handleDelete(row)"
+              v-permission="'system:user:delete'"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -90,8 +123,8 @@
     </el-dialog>
 
     <!-- 角色分配对话框 -->
-    <el-dialog 
-      v-model="roleDialogVisible" 
+    <el-dialog
+      v-model="roleDialogVisible"
       title="分配角色"
       width="500px"
       @open="handleRoleDialogOpen"
@@ -102,9 +135,9 @@
         </el-form-item>
         <el-form-item label="选择角色">
           <el-checkbox-group v-model="selectedRoleIds" v-loading="roleLoading">
-            <el-checkbox 
-              v-for="role in availableRoles" 
-              :key="role.id" 
+            <el-checkbox
+              v-for="role in availableRoles"
+              :key="role.id"
               :label="role.id"
               style="display: block; margin-bottom: 10px;"
             >
@@ -122,6 +155,38 @@
         <el-button type="primary" @click="handleRoleSubmit" :loading="roleSubmitting">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 密码重置对话框 -->
+    <el-dialog
+      v-model="resetPasswordDialogVisible"
+      title="重置密码"
+      width="500px"
+    >
+      <el-form :model="resetPasswordForm" :rules="resetPasswordRules" ref="resetPasswordFormRef" label-width="80px">
+        <el-form-item label="用户名">
+          <el-input v-model="resetPasswordForm.username" disabled />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="resetPasswordForm.newPassword"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            show-password
+          />
+        </el-form-item>
+        <el-alert
+          title="提示"
+          type="warning"
+          description="重置后用户需使用新密码登录，请妥善保管并告知用户"
+          :closable="false"
+          style="margin-top: 10px;"
+        />
+      </el-form>
+      <template #footer>
+        <el-button @click="resetPasswordDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitResetPassword">确定重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -129,8 +194,10 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
-import { userManagement, roleManagement } from '@/api/auth';
+import { userManagement, roleManagement } from '@/api/auth';import { usePermissionStore } from '@/stores/usePermissionStore'
 
+// 使用权限store
+const permissionStore = usePermissionStore()
 // 数据状态
 const loading = ref(false);
 const userList = ref([]);
@@ -336,6 +403,66 @@ const handleRoleSubmit = async () => {
     ElMessage.error(error.message || '角色分配失败');
   } finally {
     roleSubmitting.value = false;
+  }
+};
+
+// 重置密码
+const resetPasswordDialogVisible = ref(false);
+const resetPasswordForm = reactive({
+  userId: null,
+  username: '',
+  newPassword: ''
+});
+const resetPasswordFormRef = ref(null);
+
+const resetPasswordRules = {
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+  ]
+};
+
+const handleResetPassword = (row) => {
+  resetPasswordForm.userId = row.id;
+  resetPasswordForm.username = row.username || row.email;
+  resetPasswordForm.newPassword = '';
+  resetPasswordDialogVisible.value = true;
+};
+
+const submitResetPassword = async () => {
+  if (!resetPasswordFormRef.value) return;
+  await resetPasswordFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await userManagement.resetPassword(resetPasswordForm.userId, resetPasswordForm.newPassword);
+        ElMessage.success('密码重置成功');
+        resetPasswordDialogVisible.value = false;
+      } catch (error) {
+        console.error('重置密码失败:', error);
+        ElMessage.error(error.message || '重置密码失败');
+      }
+    }
+  });
+};
+
+// 切换用户状态
+const handleToggleStatus = async (row) => {
+  const action = row.is_active ? '禁用' : '启用';
+  try {
+    await ElMessageBox.confirm(`确定要${action}用户"${row.username || row.email}"吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+
+    await userManagement.update(row.id, { is_active: !row.is_active });
+    ElMessage.success(`${action}成功`);
+    fetchUserList();
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error);
+      ElMessage.error(error.message || '操作失败');
+    }
   }
 };
 
