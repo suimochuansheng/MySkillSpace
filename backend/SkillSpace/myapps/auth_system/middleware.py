@@ -40,7 +40,7 @@ class OperationLogMiddleware(MiddlewareMixin):
         '/api/auth/login/',  # 登录单独处理
         '/api/auth/register/',  # 注册单独处理
         '/api/auth/logout/',  # 登出单独处理
-        '/api/ai/stream_chat/',  # AI流式聊天
+        # AI操作已恢复记录（使用request.data兼容DRF，避免request.body冲突）
     ]
 
     def __init__(self, get_response):
@@ -75,23 +75,33 @@ class OperationLogMiddleware(MiddlewareMixin):
 
     def _parse_request_params(self, request):
         """
-        解析请求参数
+        解析请求参数（兼容DRF）
         """
         try:
             if request.method == 'GET':
                 return str(dict(request.GET))
             elif request.method in ['POST', 'PUT', 'PATCH']:
-                # 尝试解析JSON
-                if request.content_type == 'application/json':
+                # ✅ 修复：优先使用DRF的request.data（如果可用）
+                # 避免 "You cannot access body after reading from request's data stream" 错误
+                if hasattr(request, 'data'):
+                    try:
+                        # DRF的request.data已经解析好了，直接使用
+                        return json.dumps(dict(request.data), ensure_ascii=False)
+                    except Exception as e:
+                        # 如果request.data不是dict，尝试其他方式
+                        return str(request.data)[:500]
+                # 如果不是DRF请求，尝试原生request.body
+                elif request.content_type == 'application/json':
                     try:
                         return json.dumps(json.loads(request.body), ensure_ascii=False)
                     except:
-                        return str(request.body)
+                        return str(request.body)[:500]
                 else:
                     return str(dict(request.POST))
             return ''
         except Exception as e:
-            logger.error(f'解析请求参数失败: {e}')
+            # ✅ 降级：出错时不影响主流程，仅记录警告
+            logger.warning(f'解析请求参数失败（已忽略）: {e}')
             return ''
 
     def _parse_response_data(self, response):
