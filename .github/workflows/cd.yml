@@ -53,8 +53,8 @@ jobs:
           file: ./backend/Dockerfile.prod  # Dockerfile路径
           push: true  # 推送到远程仓库
           tags: |
-            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest
-            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/backend:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/backend:${{ github.sha }}
           # 缓存配置（加速后续构建）
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -66,7 +66,7 @@ jobs:
       - name: 输出镜像信息
         run: |
           echo "✅ 后端镜像构建成功！"
-          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest"
+          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/backend:latest"
           echo "🏷️ Git SHA: ${{ github.sha }}"
 
   # ==================== 任务2：构建前端镜像 ====================
@@ -99,8 +99,8 @@ jobs:
           file: ./frontend/skillspace/Dockerfile  # Dockerfile路径
           push: true  # 推送到远程仓库
           tags: |
-            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest
-            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/frontend:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/frontend:${{ github.sha }}
           # 缓存配置（加速后续构建）
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -112,14 +112,60 @@ jobs:
       - name: 输出镜像信息
         run: |
           echo "✅ 前端镜像构建成功！"
-          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest"
+          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/frontend:latest"
           echo "🏷️ Git SHA: ${{ github.sha }}"
 
-  # ==================== 任务3：自动部署到服务器 ====================
+  # ==================== 任务3：构建 Celery Worker 镜像 ====================
+  build-celery-worker:
+    name: 构建 Celery Worker 镜像
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码仓库
+        uses: actions/checkout@v4
+
+      # 2. 设置 Docker Buildx
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录阿里云容器镜像服务
+      - name: 登录阿里云 ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 4. 构建并推送 Celery Worker 镜像
+      - name: 构建并推送 Celery Worker 镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend  # 构建上下文目录
+          file: ./backend/Dockerfile.prod  # Dockerfile路径
+          push: true  # 推送到远程仓库
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/celery_worker:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/celery_worker:${{ github.sha }}
+          # 缓存配置（加速后续构建）
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # 构建参数
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      # 5. 输出镜像信息
+      - name: 输出镜像信息
+        run: |
+          echo "✅ Celery Worker 镜像构建成功！"
+          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/celery_worker:latest"
+          echo "🏷️ Git SHA: ${{ github.sha }}"
+
+  # ==================== 任务4：自动部署到服务器 ====================
   deploy:
     name: 部署到阿里云 ECS
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]  # 等待镜像构建完成
+    needs: [build-backend, build-frontend, build-celery-worker]  # 等待镜像构建完成
 
     steps:
       # 1. SSH 连接并部署
@@ -167,8 +213,9 @@ jobs:
           echo "========================================="
           echo ""
           echo "📦 已部署的镜像："
-          echo "  - 后端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest"
-          echo "  - 前端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest"
+          echo "  - 后端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/backend:latest"
+          echo "  - 前端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/frontend:latest"
+          echo "  - Celery Worker: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/celery_worker:latest"
           echo ""
           echo "🔗 访问地址："
           echo "  - 请查看服务器配置的域名或 IP"
