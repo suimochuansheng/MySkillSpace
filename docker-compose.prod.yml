@@ -1,13 +1,17 @@
 # ==================== 生产环境 Docker Compose ====================
+
 # 用途：在 Debian13 虚拟机上部署完整的 SkillSpace 项目
+
 # 使用本地构建的镜像（不依赖镜像仓库）
 
 # V2 版本不需要 version: '3.8'
 
 services:
+
   # ==================== 1. 前端服务（Nginx + Vue） ====================
+
   frontend:
-    image: ${ALI_PUBLIC_HOST}/skillspace/frontend:latest
+    image: ${ALI_PUBLIC_HOST}/${ACR_NAMESPACE}/frontend:latest
     container_name: skillspace_frontend
     restart: always
     ports:
@@ -24,8 +28,9 @@ services:
         max-file: "3"
 
   # ==================== 2. 后端服务（Django + Daphne） ====================
+
   backend:
-    image: ${ALI_PUBLIC_HOST}/skillspace/backend:latest
+    image: ${ALI_PUBLIC_HOST}/${ACR_NAMESPACE}/backend:latest
     container_name: skillspace_backend
     restart: always
     depends_on:
@@ -48,8 +53,9 @@ services:
         max-file: "3"
 
   # ==================== 3. Celery Worker（异步任务处理） ====================
+
   celery_worker:
-    image: ${ALI_PUBLIC_HOST}/skillspace/celery_worker:latest
+    image: ${ALI_PUBLIC_HOST}/${ACR_NAMESPACE}/celery_worker:latest
     container_name: skillspace_celery_worker
     restart: always
     command: celery -A SkillSpace worker --loglevel=info --concurrency=2
@@ -70,6 +76,7 @@ services:
         max-file: "3"
 
   # ==================== 4. MySQL 数据库 ====================
+
   db:
     image: mysql:8.0
     container_name: skillspace_db
@@ -97,6 +104,7 @@ services:
         max-file: "3"
 
   # ==================== 5. Redis 缓存 ====================
+
   redis:
     image: redis:7.0-alpine
     container_name: skillspace_redis
@@ -116,7 +124,8 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ==================== 6. RabbitMQ 消息队列 ====================
+# ==================== 6. RabbitMQ 消息队列 ====================
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: skillspace_rabbitmq
@@ -140,6 +149,7 @@ services:
         max-file: "3"
 
 # ==================== 数据卷（持久化存储） ====================
+
 volumes:
   mysql_data:  # MySQL数据
   redis_data:  # Redis数据
@@ -148,6 +158,7 @@ volumes:
   media_volume:  # 用户上传文件
 
 # ==================== 网络配置 ====================
+
 networks:
   skillspace_network:
     driver: bridge
