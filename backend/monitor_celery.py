@@ -8,12 +8,13 @@ Celery 监控脚本 - 实时查看队列和任务状态
 
 import os
 import sys
-import django
-from datetime import datetime
 import time
+from datetime import datetime
+
+import django
 
 sys.path.insert(0, os.path.dirname(__file__))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SkillSpace.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SkillSpace.settings")
 django.setup()
 
 from celery import current_app
@@ -21,9 +22,9 @@ from celery import current_app
 
 def print_header(title):
     """打印标题"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"  {title}")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
 
 def monitor_queues():
@@ -38,7 +39,7 @@ def monitor_queues():
     if stats:
         print("🖥️  Worker 状态:")
         for worker, stat in stats.items():
-            total_tasks = stat.get('total', {})
+            total_tasks = stat.get("total", {})
             print(f"  ✅ {worker}")
             print(f"     总任务数: {total_tasks}")
             print(f"     进程池: {stat.get('pool', {}).get('max-concurrency', 'N/A')}")
@@ -50,7 +51,7 @@ def monitor_queues():
 
     # 2. 活跃任务
     active = inspect.active()
-    print(f"\n⚡ 活跃任务 (正在执行):")
+    print("\n⚡ 活跃任务 (正在执行):")
     active_count = 0
     if active and any(active.values()):
         for worker, tasks in active.items():
@@ -67,7 +68,7 @@ def monitor_queues():
 
     # 3. 预留任务
     reserved = inspect.reserved()
-    print(f"\n📋 预留任务 (队列中等待):")
+    print("\n📋 预留任务 (队列中等待):")
     reserved_count = 0
     if reserved and any(reserved.values()):
         for worker, tasks in reserved.items():
@@ -82,7 +83,7 @@ def monitor_queues():
 
     # 4. 活跃队列
     active_queues = inspect.active_queues()
-    print(f"\n📂 活跃队列:")
+    print("\n📂 活跃队列:")
     if active_queues:
         for worker, queues in active_queues.items():
             print(f"  Worker: {worker}")
@@ -94,17 +95,17 @@ def monitor_queues():
 
     # 5. 已注册任务
     registered = inspect.registered()
-    print(f"\n📝 已注册任务:")
+    print("\n📝 已注册任务:")
     if registered:
         for worker, tasks in registered.items():
-            custom_tasks = [t for t in tasks if 'myapps' in t]
+            custom_tasks = [t for t in tasks if "myapps" in t]
             if custom_tasks:
                 print(f"  Worker: {worker}")
                 for task in custom_tasks:
                     # 判断任务路由
-                    if 'ai_demo' in task:
+                    if "ai_demo" in task:
                         queue_info = "→ gpu_queue"
-                    elif 'resume' in task:
+                    elif "resume" in task:
                         queue_info = "→ api_queue"
                     else:
                         queue_info = "→ default"
@@ -112,7 +113,7 @@ def monitor_queues():
                     print(f"    ✓ {task} {queue_info}")
 
     # 6. 统计汇总
-    print(f"\n📊 统计汇总:")
+    print("\n📊 统计汇总:")
     print(f"  活跃任务数: {active_count}")
     print(f"  等待任务数: {reserved_count}")
     print(f"  总待处理: {active_count + reserved_count}")
@@ -125,7 +126,7 @@ def continuous_monitor():
     try:
         while True:
             # 清屏 (Windows)
-            os.system('cls' if os.name == 'nt' else 'clear')
+            os.system("cls" if os.name == "nt" else "clear")
 
             monitor_queues()
 
@@ -153,6 +154,7 @@ def check_health():
 
     # 检查队列配置
     from SkillSpace.celery_demo import app as celery_app
+
     queues = celery_app.conf.task_queues
 
     print("✅ Celery应用配置:")
@@ -174,9 +176,9 @@ def main():
     import sys
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == '--watch':
+        if sys.argv[1] == "--watch":
             continuous_monitor()
-        elif sys.argv[1] == '--health':
+        elif sys.argv[1] == "--health":
             check_health()
         else:
             print("用法:")

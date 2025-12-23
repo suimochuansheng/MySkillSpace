@@ -123,7 +123,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=128,
         blank=True,
         null=True,
-        help_text="⚠️ 仅开发环境使用，用于调试。生产环境请删除此字段！"
+        help_text="⚠️ 仅开发环境使用，用于调试。生产环境请删除此字段！",
     )
 
     is_active = models.BooleanField(default=True)
@@ -156,28 +156,24 @@ class OperationLog(models.Model):
     """
 
     ACTION_CHOICES = (
-        ('新增', '新增'),
-        ('修改', '修改'),
-        ('删除', '删除'),
-        ('查询', '查询'),
-        ('导出', '导出'),
-        ('导入', '导入'),
-        ('登录', '登录'),
-        ('登出', '登出'),
-        ('其他', '其他'),
+        ("新增", "新增"),
+        ("修改", "修改"),
+        ("删除", "删除"),
+        ("查询", "查询"),
+        ("导出", "导出"),
+        ("导入", "导入"),
+        ("登录", "登录"),
+        ("登出", "登出"),
+        ("其他", "其他"),
     )
 
     STATUS_CHOICES = (
-        ('0', '成功'),
-        ('1', '失败'),
+        ("0", "成功"),
+        ("1", "失败"),
     )
 
     user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="操作人"
+        User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="操作人"
     )
     username = models.CharField("操作账号", max_length=150, blank=True)
     module = models.CharField("操作模块", max_length=50)
@@ -193,7 +189,9 @@ class OperationLog(models.Model):
 
     # 响应信息
     response_data = models.TextField("响应数据", blank=True)
-    status = models.CharField("操作状态", max_length=1, choices=STATUS_CHOICES, default='0')
+    status = models.CharField(
+        "操作状态", max_length=1, choices=STATUS_CHOICES, default="0"
+    )
     error_msg = models.TextField("错误信息", blank=True)
 
     # 时间信息
@@ -206,9 +204,9 @@ class OperationLog(models.Model):
         db_table = "sys_operation_log"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['module', '-created_at']),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["module", "-created_at"]),
         ]
 
     def __str__(self):
@@ -223,8 +221,8 @@ class LoginLog(models.Model):
     """
 
     STATUS_CHOICES = (
-        ('0', '成功'),
-        ('1', '失败'),
+        ("0", "成功"),
+        ("1", "失败"),
     )
 
     username = models.CharField("登录账号", max_length=150)
@@ -249,11 +247,11 @@ class LoginLog(models.Model):
         db_table = "sys_login_log"
         ordering = ["-login_time"]
         indexes = [
-            models.Index(fields=['-login_time']),
-            models.Index(fields=['username', '-login_time']),
-            models.Index(fields=['status', '-login_time']),
+            models.Index(fields=["-login_time"]),
+            models.Index(fields=["username", "-login_time"]),
+            models.Index(fields=["status", "-login_time"]),
         ]
 
     def __str__(self):
-        status_text = "成功" if self.status == '0' else "失败"
+        status_text = "成功" if self.status == "0" else "失败"
         return f"{self.username} 登录{status_text} - {self.login_time.strftime('%Y-%m-%d %H:%M:%S')}"

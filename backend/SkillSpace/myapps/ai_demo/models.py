@@ -1,6 +1,6 @@
 # ai_demo/models.py
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 # Create your models here.
 
@@ -9,11 +9,12 @@ class AITask(models.Model):
     """
     AI 任务记录表（用于追踪和监控）
     """
+
     STATUS_CHOICES = (
-        ('pending', '等待中'),
-        ('processing', '处理中'),
-        ('completed', '已完成'),
-        ('failed', '失败'),
+        ("pending", "等待中"),
+        ("processing", "处理中"),
+        ("completed", "已完成"),
+        ("failed", "失败"),
     )
 
     task_id = models.CharField(
@@ -27,15 +28,13 @@ class AITask(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='ai_tasks',
-        help_text="发起任务的用户（可为空，支持匿名）"
+        related_name="ai_tasks",
+        help_text="发起任务的用户（可为空，支持匿名）",
     )
-    session_id = models.CharField(
-        max_length=100, db_index=True, help_text="会话ID"
-    )
+    session_id = models.CharField(max_length=100, db_index=True, help_text="会话ID")
     prompt = models.TextField(help_text="用户提问")
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default='pending', help_text="任务状态"
+        max_length=20, choices=STATUS_CHOICES, default="pending", help_text="任务状态"
     )
     ws_url = models.CharField(max_length=500, help_text="WebSocket连接地址")
     created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间")
@@ -47,9 +46,9 @@ class AITask(models.Model):
         verbose_name = "AI任务"
         verbose_name_plural = "AI任务"
         indexes = [
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['session_id', '-created_at']),
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["session_id", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
         ]
 
     def __str__(self):
@@ -70,8 +69,8 @@ class ChatRecord(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='chat_records',
-        help_text="对话用户（可为空，支持匿名）"
+        related_name="chat_records",
+        help_text="对话用户（可为空，支持匿名）",
     )
     role = models.CharField(
         max_length=20, choices=(("user", "User"), ("assistant", "AI")), help_text="角色"
@@ -87,8 +86,8 @@ class ChatRecord(models.Model):
         verbose_name = "对话记录"
         verbose_name_plural = "对话记录"
         indexes = [
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['session_id', 'created_at']),
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["session_id", "created_at"]),
         ]
 
     def __str__(self):

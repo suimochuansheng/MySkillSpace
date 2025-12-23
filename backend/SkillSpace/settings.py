@@ -54,10 +54,9 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-       "daphne",  # Channels ASGI 服务器（必须放在staticfiles前面）
+    "daphne",  # Channels ASGI 服务器（必须放在staticfiles前面）
     "django.contrib.staticfiles",
     # 第三方应用
- 
     "channels",  # WebSocket 支持
     "rest_framework",
     "corsheaders",
@@ -217,13 +216,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # ========== CELERY 配置 ==========
 # Celery Broker (使用 RabbitMQ)
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//"
+)
 
 # ========== Result Backend 配置 ==========
 # 使用 Redis 存储任务结果
 CELERY_RESULT_BACKEND = os.getenv(
-    "CELERY_RESULT_BACKEND",
-    "redis://:123456@localhost:6379/0"
+    "CELERY_RESULT_BACKEND", "redis://:123456@localhost:6379/0"
 )
 
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -272,9 +272,11 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [{
-                "address": f"redis://:{os.getenv('REDIS_PASSWORD', '123456')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
-            }],
+            "hosts": [
+                {
+                    "address": f"redis://:{os.getenv('REDIS_PASSWORD', '123456')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
+                }
+            ],
             "capacity": 1500,  # 每个 channel 最大消息数
             "expiry": 10,  # 消息过期时间（秒）
         },

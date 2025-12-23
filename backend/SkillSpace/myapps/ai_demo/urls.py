@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import QwenChatAPI, QwenChatAsyncAPI, AITaskListAPI
+from .views import AITaskListAPI, QwenChatAPI, QwenChatAsyncAPI
 
 urlpatterns = [
     # 原有接口（方案 A：同步流式 SSE）

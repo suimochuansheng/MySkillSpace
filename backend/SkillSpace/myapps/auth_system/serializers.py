@@ -2,7 +2,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from .models import Menu, Role, User, OperationLog, LoginLog
+from .models import LoginLog, Menu, OperationLog, Role, User
 
 # ==========================================
 # 新增/修改：RBAC 权限相关序列化器

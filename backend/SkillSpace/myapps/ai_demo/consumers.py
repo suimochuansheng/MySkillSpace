@@ -29,10 +29,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         self.channel_name_prefix = f"ai_{self.task_id}"
 
         # 加入 Channel Group（用于接收 Celery 推送的消息）
-        await self.channel_layer.group_add(
-            self.channel_name_prefix,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.channel_name_prefix, self.channel_name)
 
         # 接受 WebSocket 连接
         await self.accept()
@@ -43,8 +40,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         """断开 WebSocket 连接"""
         # 离开 Channel Group
         await self.channel_layer.group_discard(
-            self.channel_name_prefix,
-            self.channel_name
+            self.channel_name_prefix, self.channel_name
         )
 
         logger.info(f"❌ WebSocket 连接断开: task_id={self.task_id}, code={close_code}")
@@ -73,9 +69,13 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         }
         """
         # 转发给前端
-        await self.send(text_data=json.dumps({
-            "code": 200,
-            "token": event["token"],
-            "type": event["chunk_type"],
-            "task_id": event.get("task_id", self.task_id)
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "code": 200,
+                    "token": event["token"],
+                    "type": event["chunk_type"],
+                    "task_id": event.get("task_id", self.task_id),
+                }
+            )
+        )
