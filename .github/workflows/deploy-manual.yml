@@ -1,14 +1,19 @@
-name: Build and Push to ACR
+name: 手动部署 - 构建并推送镜像
 
-# 触发条件：推送到指定分支时自动执行
+# 触发条件：仅支持手动触发
+# 用途：用于特殊场景下的手动构建和推送（如热修复、回滚等）
 on:
-  push:
-    branches:
-      - main
-      - master
-      - feature/**  # 支持所有 feature 分支
-  # 也可以手动触发工作流
   workflow_dispatch:
+    inputs:
+      environment:
+        description: '目标环境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
 
 env:
   # 镜像版本号（使用 Git commit SHA 短码）
@@ -22,6 +27,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ==================== 0. 调试 - 验证 Secrets ====================
+      - name: 调试 - 验证 Secrets 配置
+        run: |
+          echo "========================================="
+          echo "🔍 调试信息 - 验证 Secrets"
+          echo "========================================="
+          echo "ACR_REGISTRY 是否为空: ${{ secrets.ACR_REGISTRY == '' }}"
+          echo "ACR_USERNAME 是否为空: ${{ secrets.ACR_USERNAME == '' }}"
+          echo "ACR_PASSWORD 是否为空: ${{ secrets.ACR_PASSWORD == '' }}"
+          echo "ACR_REGISTRY 长度: ${#ACR_REGISTRY}"
+          echo "========================================="
+          if [ -z "${{ secrets.ACR_REGISTRY }}" ]; then
+            echo "❌ 错误：ACR_REGISTRY Secret 未配置或为空！"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ACR_USERNAME }}" ]; then
+            echo "❌ 错误：ACR_USERNAME Secret 未配置或为空！"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
+            echo "❌ 错误：ACR_PASSWORD Secret 未配置或为空！"
+            exit 1
+          fi
+          echo "✅ 所有必需的 ACR Secrets 都已配置"
+
       # ==================== 1. 检出代码 ====================
       - name: 检出代码
         uses: actions/checkout@v4
@@ -81,19 +111,24 @@ jobs:
       - name: 输出构建信息
         run: |
           echo "========================================="
-          echo "✅ 镜像构建并推送成功！"
+          echo "✅ 手动构建完成！镜像已推送到 ACR"
           echo "========================================="
-          echo "镜像标签："
+          echo "🎯 目标环境: ${{ github.event.inputs.environment }}"
+          echo ""
+          echo "📦 镜像标签："
           echo "  - backend:latest"
           echo "  - backend:${{ github.sha }}"
           echo "  - celery_worker:latest"
           echo "  - celery_worker:${{ github.sha }}"
           echo "  - frontend:latest"
           echo "  - frontend:${{ github.sha }}"
+          echo ""
           echo "========================================="
-          echo "下一步操作："
+          echo "📝 下一步操作："
           echo "1. SSH 连接到 ECS 服务器"
           echo "2. 执行: cd /app/skillspace"
           echo "3. 执行: docker compose -f docker-compose.prod.yml pull"
           echo "4. 执行: docker compose -f docker-compose.prod.yml up -d"
+          echo ""
+          echo "💡 提示：也可以通过 cd.yml 工作流自动部署"
           echo "========================================="
