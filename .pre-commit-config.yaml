@@ -1,35 +1,30 @@
-# ==================== Pre-commit Hook 配置 ====================
-# 功能：在 git commit 前自动检查和格式化代码
-# 安装：pip install pre-commit && pre-commit install
-# 使用：正常 git commit，会自动触发
-
 repos:
-  # ==================== Black - 代码格式化 ====================
+  # ==================== Black ====================
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 25.12.0
     hooks:
       - id: black
-        name: 格式化 Python 代码 (Black)
+        name: formatting Python code (Black)
         language_version: python3.11
         files: ^backend/.*\.py$
         exclude: ^backend/.*/migrations/.*\.py$
 
-  # ==================== isort - 导入语句排序 ====================
+  # ==================== isort  ====================
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 7.0.0
     hooks:
       - id: isort
-        name: 排序导入语句 (isort)
+        name: Sorting import statement (isort)
         args: ["--profile", "black"]
         files: ^backend/.*\.py$
         exclude: ^backend/.*/migrations/.*\.py$
 
-  # ==================== Flake8 - 代码检查 ====================
+  # ==================== Flake8====================
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.3.0
     hooks:
       - id: flake8
-        name: 检查代码错误 (Flake8)
+        name: Check for code errors (Flake8)
         args:
           - --max-line-length=127
           - --ignore=E501,W503,E203,C901,F841,E402
@@ -37,25 +32,20 @@ repos:
           - --max-complexity=20
         files: ^backend/.*\.py$
 
-  # ==================== 其他通用检查 ====================
+  # ====================other ====================
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
-      # 检查文件尾部有空行
       - id: end-of-file-fixer
         files: ^backend/.*\.py$
 
-      # 移除文件尾部多余空格
       - id: trailing-whitespace
         files: ^backend/.*\.py$
 
-      # 检查合并冲突标记
       - id: check-merge-conflict
 
-      # 检查 YAML 文件语法
       - id: check-yaml
         files: \.(yaml|yml)$
 
-      # 检查大文件（防止误提交）
       - id: check-added-large-files
-        args: ['--maxkb=10240']  # 最大 10MB
+        args: ['--maxkb=10240']

@@ -1,35 +1,8 @@
 [flake8]
-# Flake8 配置文件
-
-# 忽略的错误码
-ignore = E501,W503,E203,C901,F841,E402
-
-# 排除的文件和目录
-exclude =
-    .git,
-    __pycache__,
-    */migrations/*,
-    venv,
-    env,
-    .venv,
-    build,
-    dist,
-    *.egg-info,
-    .tox,
-    .eggs,
-    backend/SkillSpace/settings.py
-
-# 最大行长度
-max-line-length = 127
-
-# 最大复杂度
-max-complexity = 20
-
-# 显示错误源代码
-show-source = True
-
-# 显示统计信息
-statistics = True
-
-# 计数错误
-count = True
+# 忽略 F401 (未使用导入)
+extend-ignore = F401
+# 或者只针对特定的文件忽略
+per-file-ignores =
+    __init__.py: F401
+    admin.py: F401
+    models.py: F401
