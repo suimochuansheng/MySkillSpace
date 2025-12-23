@@ -54,7 +54,8 @@ $RECYCLE.BIN/
 *.sln
 *.sw?
 
-# claude 文件
+  
+# claude AI文件
 .claude/
 
 # ================= 临时文件 & 日志 =================
