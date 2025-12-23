@@ -18,24 +18,24 @@ jobs:
     # 1. 下载代码
     - name: 🐙 检出仓库代码
       uses: actions/checkout@v4
-
+    
     # 2. 准备 Python 3.11 环境
     - name: ⚙️ 配置 Python 环境
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-
+    
     # 3. 缓存（大幅提升后续运行速度）
     - name: 💾 缓存 pre-commit 依赖
       uses: actions/cache@v4
       with:
         path: ~/.cache/pre-commit
         key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-
+    
     # 4. 安装 pre-commit 核心工具
     - name: 📦 安装 pre-commit
       run: pip install pre-commit
-
+    
     # 5. 执行检查（核心：读取你的 .pre-commit-config.yaml）
     - name: 🔍 运行代码检查 (Black, isort, Flake8)
       run: |
