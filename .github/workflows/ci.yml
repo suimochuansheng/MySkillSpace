@@ -24,7 +24,7 @@ jobs:
     - name: ⚙️ 配置 Python 环境
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     # 3. 重点优化：缓存 pre-commit 的钩子环境
     - name: 💾 缓存 pre-commit 依赖
