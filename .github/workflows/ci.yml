@@ -1,39 +1,53 @@
-# CI 代码检查工作流
 name: CI代码检查
 
-# 触发条件：指定分支的推送/拉取请求操作
 on:
   push:
-    branches: [ "main", "master", "dev" ]  # 推送代码至这些分支时触发
+    branches: [ "main", "master", "dev" ]
   pull_request:
-    branches: [ "main", "master" ]         # 针对这些分支创建PR时触发
+    branches: [ "main", "master" ]
 
-# 定义代码检查任务
+# 增加安全权限声明
+permissions:
+  contents: read
+
 jobs:
-  代码规范检查:
-    runs-on: ubuntu-latest  # 运行环境：最新版Ubuntu系统
+  lint:
+    name: 代码规范检查
+    runs-on: ubuntu-latest
+    
     steps:
-    # 步骤1：检出仓库代码
-    - name: 🐙检出仓库代码（Git仓库一键拉取）
-    - uses: actions/checkout@v4
+    # 1. 检出代码
+    - name: 🐙 检出仓库代码
+      uses: actions/checkout@v4
 
-    # 步骤2：配置Python运行环境
-    - name: ⚙️ 配置Python环境
+    # 2. 配置 Python
+    - name: ⚙️ 配置 Python 环境
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'  # 指定Python版本为3.10
+        python-version: '3.10'
 
-    # 步骤3：安装代码检查工具
-    - name: 📦安装代码检查工具
-      # 优化：仅安装轻量级检查工具，跳过requirements.txt中的torch等重量级依赖，大幅节省耗时
-      run: |
-        pip install flake8 isort black pre-commit
+    # 3. 重点优化：缓存 pre-commit 的钩子环境
+    - name: 💾 缓存 pre-commit 依赖
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pre-commit-
 
-    # 步骤4：运行所有预提交检查-具体执行检查看项目的.pre-commit-config.yaml文件内
-    - name: 🔍运行代码检查
+    # 4. 安装工具
+    - name: 📦 安装检查工具
       run: |
+        python -m pip install --upgrade pip
+        pip install pre-commit
+
+    # 5. 运行检查
+    - name: 🔍 运行代码检查
+      run: |
+        # 即使没有修改的文件也运行检查（--all-files）
+        # 如果只想检查修改的文件，可以去掉 --all-files
         if pre-commit run --all-files; then
           echo "✅ 代码检查通过！✨ 优雅如你，提交无压力~"
         else
-          echo "⚠️ 代码检查失败！🚨 请修复后重试（查看日志定位问题）"
+          echo "⚠️ 代码检查失败！🚨 请修复后重试（查看上方日志定位问题）"
           exit 1
