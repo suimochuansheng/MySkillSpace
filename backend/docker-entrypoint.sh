@@ -41,7 +41,8 @@ sleep 2  # 额外等待2秒，确保数据库完全启动
 # ==================== 2. 运行数据库迁移 ====================
 echo -e "${YELLOW}[2/4] 运行数据库迁移...${NC}"
 
-cd /app/SkillSpace
+# 注意：manage.py 在 /app 目录下，不是 /app/SkillSpace
+cd /app
 
 # 检查是否有新的迁移
 if python manage.py showmigrations | grep '\[ \]'; then

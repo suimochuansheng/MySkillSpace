@@ -1,12 +1,13 @@
 # ==================== 生产环境 Docker Compose ====================
-# 用途：在阿里云服务器上部署完整的 SkillSpace 项目
+# 用途：在 Debian13 虚拟机上部署完整的 SkillSpace 项目
+# 使用本地构建的镜像（不依赖镜像仓库）
 
 version: '3.8'
 
 services:
   # ==================== 1. 前端服务（Nginx + Vue） ====================
   frontend:
-    image: registry.cn-shanghai.aliyuncs.com/skillspace/skillspace-frontend:latest
+    image: skillspace-frontend:latest
     container_name: skillspace_frontend
     restart: always
     ports:
@@ -24,38 +25,15 @@ services:
 
   # ==================== 2. 后端服务（Django + Daphne） ====================
   backend:
-    image: registry.cn-shanghai.aliyuncs.com/skillspace/skillspace-backend:latest
+    image: skillspace-backend:latest
     container_name: skillspace_backend
     restart: always
     depends_on:
       - db
       - redis
       - rabbitmq
-    environment:
-      # Django配置
-      - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-
-      # 数据库配置（连接容器内的MySQL）
-      - DB_ENGINE=django.db.backends.mysql
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=db  # Docker Compose服务名
-      - DB_PORT=3306
-
-      # Redis配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-
-      # Celery配置
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
-
-      # AI配置（可选）
-      - DISABLE_AI=${DISABLE_AI:-True}
+    env_file:
+      - .env.production  # 使用生产环境变量文件
     ports:
       - "8000:8000"  # 仅供内部访问，外部通过Nginx代理
     volumes:
@@ -71,7 +49,7 @@ services:
 
   # ==================== 3. Celery Worker（异步任务处理） ====================
   celery_worker:
-    image: registry.cn-shanghai.aliyuncs.com/skillspace/skillspace-backend:latest
+    image: skillspace-celery_worker:latest
     container_name: skillspace_celery_worker
     restart: always
     command: celery -A SkillSpace worker --loglevel=info --concurrency=2
@@ -79,22 +57,8 @@ services:
       - db
       - redis
       - rabbitmq
-    environment:
-      # 与backend相同的环境变量
-      - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_ENGINE=django.db.backends.mysql
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=db
-      - DB_PORT=3306
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - DISABLE_AI=${DISABLE_AI:-True}
+    env_file:
+      - .env.production  # 使用生产环境变量文件
     volumes:
       - media_volume:/app/SkillSpace/media
     networks:
@@ -111,6 +75,8 @@ services:
     container_name: skillspace_db
     restart: always
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    env_file:
+      - .env.production
     environment:
       - MYSQL_ROOT_PASSWORD=${ROOT_PASSWORD}
       - MYSQL_DATABASE=${DB_NAME}
@@ -136,6 +102,8 @@ services:
     container_name: skillspace_redis
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    env_file:
+      - .env.production
     ports:
       - "6379:6379"
     volumes:
@@ -153,6 +121,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: skillspace_rabbitmq
     restart: always
+    env_file:
+      - .env.production
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}

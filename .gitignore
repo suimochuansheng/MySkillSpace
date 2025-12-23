@@ -222,6 +222,7 @@ next-env.d.ts
 
 # ================= Docker =================
 docker-compose.override.yml
+docker-compose.local.yml
 
 # ================= AI / 机器学习模型 =================
 # 模型缓存目录（Qwen 等大模型文件）

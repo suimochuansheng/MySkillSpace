@@ -1,6 +1,6 @@
 # ==================== 第一阶段：构建阶段 ====================
-# 使用 Node.js 官方镜像作为构建环境
-FROM node:18-alpine AS builder
+# 使用 Node.js 官方镜像作为构建环境（Vite 7 需要 Node.js 20+）
+FROM node:20-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app

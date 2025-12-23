@@ -3,15 +3,28 @@ import os
 import re
 import traceback
 from threading import Lock, Thread
-import torch
 from django.conf import settings  # 引入 Django settings 以获取基准路径
-from modelscope import snapshot_download
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-    TextIteratorStreamer,
-)
+
+# 条件导入 AI 依赖（仅在可用时导入）
+try:
+    import torch
+    from modelscope import snapshot_download
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+        TextIteratorStreamer,
+    )
+    AI_AVAILABLE = True
+except ImportError:
+    # AI 依赖不可用，定义占位符以避免运行时错误
+    torch = None
+    snapshot_download = None
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+    BitsAndBytesConfig = None
+    TextIteratorStreamer = None
+    AI_AVAILABLE = False
 
 model_lock = Lock()
 
@@ -23,7 +36,7 @@ BASE_DIR = settings.BASE_DIR
 MODEL_CACHE_DIR = os.path.join(BASE_DIR, "qwen_model_cache")
 
 MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
-DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda:0" if (torch and torch.cuda.is_available()) else "cpu"
 MAX_PROMPT_LENGTH = 2000
 
 # 全局变量
@@ -52,6 +65,11 @@ def load_model_on_startup():
     5. 支持 Flash Attention 2（需要安装）
     """
     global model, tokenizer, model_loaded
+
+    # 检查 AI 依赖是否可用
+    if not AI_AVAILABLE:
+        print("[WARNING] AI dependencies not installed. Skipping model loading.")
+        return
 
     if not ENABLE_MODEL_LOADING:
         return
@@ -158,6 +176,8 @@ def load_model_on_startup():
         model_loaded = False
 
 def get_model():
+    if not AI_AVAILABLE:
+        raise RuntimeError("AI dependencies not installed. Please install required packages.")
     if not ENABLE_MODEL_LOADING:
         raise RuntimeError("AI模型加载未启用")
     if not model_loaded or model is None:

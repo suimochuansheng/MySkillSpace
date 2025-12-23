@@ -1,6 +1,6 @@
 # ==================== 生产环境后端 Dockerfile ====================
-# 使用官方Python 3.9 slim镜像（更小的体积）
-FROM python:3.9-slim
+# 使用官方Python 3.11 slim镜像（兼容networkx 3.6.1）
+FROM python:3.11-slim
 
 # 设置环境变量
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -9,6 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # 设置工作目录
 WORKDIR /app
+
+# 配置国内Debian镜像源（解决apt-get网络问题）
+RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
 # 安装系统依赖
 # gcc: 编译Python扩展包
@@ -25,14 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 先复制requirements.txt可以利用Docker缓存层
 COPY requirements.txt .
 
-# 安装Python依赖
+# 安装Python依赖（使用清华源加速）
 # --no-cache-dir: 不缓存pip包，减小镜像体积
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 安装生产环境必需的ASGI服务器
-# daphne: Django Channels官方推荐的ASGI服务器，支持WebSocket
-# gunicorn: 备用的WSGI服务器（如果将来不需要WebSocket）
-RUN pip install --no-cache-dir daphne gunicorn
+# 注意：requirements.txt 中已包含 channels, daphne, channels-redis 等依赖
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 复制项目代码
 COPY . .
