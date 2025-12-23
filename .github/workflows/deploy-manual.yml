@@ -76,9 +76,9 @@ jobs:
           file: ./backend/Dockerfile.prod
           push: true
           tags: |
-            ${{ secrets.ACR_REGISTRY }}/skillspace/backend:latest
-            ${{ secrets.ACR_REGISTRY }}/skillspace/backend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/skillspace/backend:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/backend:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/backend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/backend:latest
           cache-to: type=inline
 
       # ==================== 5. 构建并推送 Celery Worker 镜像 ====================
@@ -89,9 +89,9 @@ jobs:
           file: ./backend/Dockerfile.prod
           push: true
           tags: |
-            ${{ secrets.ACR_REGISTRY }}/skillspace/celery_worker:latest
-            ${{ secrets.ACR_REGISTRY }}/skillspace/celery_worker:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/skillspace/celery_worker:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/celery_worker:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/celery_worker:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/celery_worker:latest
           cache-to: type=inline
 
       # ==================== 6. 构建并推送前端镜像 ====================
@@ -102,9 +102,9 @@ jobs:
           file: ./frontend/skillspace/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_REGISTRY }}/skillspace/frontend:latest
-            ${{ secrets.ACR_REGISTRY }}/skillspace/frontend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/skillspace/frontend:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/frontend:latest
+            ${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/frontend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.ACR_REGISTRY }}/${{secrets.ACR_NAMESPACE}}/frontend:latest
           cache-to: type=inline
 
       # ==================== 7. 输出构建信息 ====================
