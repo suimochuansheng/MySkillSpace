@@ -2,7 +2,6 @@
 # AI模型接口视图，提供通义千问对话服务
 import json
 import logging
-import time
 import uuid
 
 from django.http import StreamingHttpResponse
@@ -14,7 +13,7 @@ from rest_framework.views import APIView
 
 # 导入流式生成函数
 from .model_loader import stream_generate_answer
-from .models import ChatRecord, AITask
+from .models import AITask, ChatRecord
 from .serializers import ChatRecordSerializer, ChatRequestSerializer
 
 # 导入 Celery 任务
@@ -50,9 +49,9 @@ class AITaskListAPI(APIView):
 
     def get(self, request):
         # 获取查询参数
-        user_only = request.query_params.get('user_only', 'true').lower() == 'true'
-        status_filter = request.query_params.get('status', None)
-        limit = int(request.query_params.get('limit', 20))
+        user_only = request.query_params.get("user_only", "true").lower() == "true"
+        status_filter = request.query_params.get("status", None)
+        limit = int(request.query_params.get("limit", 20))
 
         # 构建查询
         queryset = AITask.objects.all()
@@ -74,25 +73,32 @@ class AITaskListAPI(APIView):
         # 构建返回数据
         data = []
         for task in tasks:
-            data.append({
-                "task_id": task.task_id,
-                "celery_task_id": task.celery_task_id,
-                "user": task.user.username if task.user else "匿名用户",
-                "session_id": task.session_id,
-                "prompt": task.prompt[:100] + "..." if len(task.prompt) > 100 else task.prompt,
-                "status": task.status,
-                "status_display": task.get_status_display(),
-                "ws_url": task.ws_url,
-                "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "completed_at": task.completed_at.strftime("%Y-%m-%d %H:%M:%S") if task.completed_at else None,
-            })
+            data.append(
+                {
+                    "task_id": task.task_id,
+                    "celery_task_id": task.celery_task_id,
+                    "user": task.user.username if task.user else "匿名用户",
+                    "session_id": task.session_id,
+                    "prompt": (
+                        task.prompt[:100] + "..."
+                        if len(task.prompt) > 100
+                        else task.prompt
+                    ),
+                    "status": task.status,
+                    "status_display": task.get_status_display(),
+                    "ws_url": task.ws_url,
+                    "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "completed_at": (
+                        task.completed_at.strftime("%Y-%m-%d %H:%M:%S")
+                        if task.completed_at
+                        else None
+                    ),
+                }
+            )
 
-        return Response({
-            "code": 200,
-            "msg": "success",
-            "data": data,
-            "count": len(data)
-        })
+        return Response(
+            {"code": 200, "msg": "success", "data": data, "count": len(data)}
+        )
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -133,10 +139,7 @@ class QwenChatAsyncAPI(APIView):
 
             # 3. 保存用户提问到数据库
             ChatRecord.objects.create(
-                session_id=session_id,
-                role="user",
-                content=prompt,
-                user=current_user
+                session_id=session_id, role="user", content=prompt, user=current_user
             )
 
             # 4. 获取历史上下文
@@ -160,7 +163,7 @@ class QwenChatAsyncAPI(APIView):
                 task_id=task_id,
                 prompt=prompt,
                 session_id=session_id,
-                history=history_data
+                history=history_data,
             )
 
             # 8. 保存任务记录到数据库（重要！用于追踪和监控）
@@ -170,12 +173,14 @@ class QwenChatAsyncAPI(APIView):
                 user=current_user,
                 session_id=session_id,
                 prompt=prompt[:500],  # 只保存前500字符
-                status='pending',
-                ws_url=ws_url
+                status="pending",
+                ws_url=ws_url,
             )
 
             username = current_user.username if current_user else "匿名用户"
-            logger.info(f"✅ 任务已创建: user={username}, task_id={task_id}, celery_id={task.id}")
+            logger.info(
+                f"✅ 任务已创建: user={username}, task_id={task_id}, celery_id={task.id}"
+            )
 
             # 9. 返回任务信息
             return Response(
@@ -188,7 +193,7 @@ class QwenChatAsyncAPI(APIView):
                         "session_id": session_id,
                         "ws_url": ws_url,
                         "user": username,  # 返回用户名，方便前端显示
-                    }
+                    },
                 },
                 status=status.HTTP_200_OK,
             )
@@ -297,10 +302,14 @@ class QwenChatAPI(APIView):
                         # 这样历史上下文更简洁，加载时不会混淆
                         if full_answer:
                             ChatRecord.objects.create(
-                                session_id=session_id, role="assistant", content=full_answer
+                                session_id=session_id,
+                                role="assistant",
+                                content=full_answer,
                             )
 
-                        logger.info(f"AI对话完成(Stream) - Session: {session_id}, 思考长度: {len(thinking_content)}, 答案长度: {len(full_answer)}")
+                        logger.info(
+                            f"AI对话完成(Stream) - Session: {session_id}, 思考长度: {len(thinking_content)}, 答案长度: {len(full_answer)}"
+                        )
 
                     except Exception as e:
                         logger.error(f"Stream Error: {e}")
@@ -334,7 +343,9 @@ class QwenChatAPI(APIView):
                         session_id=session_id, role="assistant", content=full_answer
                     )
 
-                logger.info(f"AI对话完成(Block) - Session: {session_id}, 思考长度: {len(thinking_content)}, 答案长度: {len(full_answer)}")
+                logger.info(
+                    f"AI对话完成(Block) - Session: {session_id}, 思考长度: {len(thinking_content)}, 答案长度: {len(full_answer)}"
+                )
 
                 return Response(
                     {

@@ -1,14 +1,14 @@
 from auth_system.views import (
     CurrentUserView,
     GetRoutersView,
+    LoginLogViewSet,
     MenuManagementViewSet,
+    OperationLogViewSet,
     RoleManagementViewSet,
     UserLoginView,
     UserLogoutView,
     UserManagementViewSet,
     UserRegistrationView,
-    OperationLogViewSet,
-    LoginLogViewSet,
 )
 from django.urls import path
 from rest_framework.routers import DefaultRouter

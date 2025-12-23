@@ -22,18 +22,18 @@ def ai_analyze_resume(resume_text: str, jd_text: str) -> dict:
     # 这里的 Prompt 不需要变，通义千问完全听得懂
     prompt = f"""
     你是一个资深的技术面试官。请对比以下【简历】和【岗位描述(JD)】。
-    
+
     【岗位描述】：
     {jd_text}
-    
+
     【简历内容】：
     {resume_text}
-    
+
     【任务】：
     1. 给简历打分（0-100）。
     2. 分析简历的亮点（Pros）和不足（Cons）。
     3. 给出具体的修改建议。
-    
+
     【输出格式】：
     必须返回标准的 JSON 格式，包含以下字段：score, summary, pros(list), cons(list), suggestions。
     不要返回 Markdown 格式（如 ```json ... ```），直接返回 JSON 字符串。

@@ -1,12 +1,13 @@
 """
 自定义权限类 - 基于RBAC菜单权限
 """
-from rest_framework import permissions
 
+from rest_framework import permissions
 
 # ==========================================
 # 工具函数：检查用户权限
 # ==========================================
+
 
 def has_permission(user, perm_code):
     """
@@ -38,8 +39,7 @@ def has_permission(user, perm_code):
 
     # 5. 查询角色关联的菜单中是否包含该权限标识
     has_perm = Menu.objects.filter(
-        role__in=user_roles,  # 用户拥有的角色
-        perms=perm_code        # 匹配权限标识
+        role__in=user_roles, perms=perm_code  # 用户拥有的角色  # 匹配权限标识
     ).exists()
 
     return has_perm
@@ -83,6 +83,7 @@ def get_user_permissions(user):
 # DRF权限类
 # ==========================================
 
+
 class MenuPermission(permissions.BasePermission):
     """
     基于菜单权限的DRF权限类
@@ -112,7 +113,7 @@ class MenuPermission(permissions.BasePermission):
             return True
 
         # 3. 获取视图要求的权限标识
-        perm_code = getattr(view, 'permission_required', None)
+        perm_code = getattr(view, "permission_required", None)
 
         # 4. 如果视图没有指定权限，默认只检查登录
         if not perm_code:
@@ -152,18 +153,18 @@ class ActionPermission(permissions.BasePermission):
             return True
 
         # 3. 获取权限映射表
-        permission_map = getattr(view, 'permission_map', None)
+        permission_map = getattr(view, "permission_map", None)
 
         if not permission_map:
             # 如果没有定义权限映射，默认只检查登录
             return True
 
         # 4. 获取当前action
-        action = getattr(view, 'action', None)
+        action = getattr(view, "action", None)
 
         if not action:
             # 如果无法获取action，尝试从basename推断
-            action = view.basename if hasattr(view, 'basename') else None
+            action = view.basename if hasattr(view, "basename") else None
 
         # 5. 获取该action需要的权限
         perm_code = permission_map.get(action, None)
@@ -194,7 +195,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return True
 
         # 检查对象是否有owner/user/created_by字段
-        owner_fields = ['owner', 'user', 'created_by']
+        owner_fields = ["owner", "user", "created_by"]
 
         for field in owner_fields:
             if hasattr(obj, field):
@@ -219,9 +220,9 @@ class IsAdminUser(permissions.BasePermission):
         检查用户是否是管理员
         """
         return bool(
-            request.user and
-            request.user.is_authenticated and
-            (request.user.is_staff or request.user.is_superuser)
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_staff or request.user.is_superuser)
         )
 
 
@@ -230,8 +231,9 @@ class IsAdminUser(permissions.BasePermission):
 # ==========================================
 
 from functools import wraps
-from rest_framework.response import Response
+
 from rest_framework import status as http_status
+from rest_framework.response import Response
 
 
 def permission_required(perm_code):
@@ -244,11 +246,12 @@ def permission_required(perm_code):
         def delete_user(self, request, pk=None):
             ...
     """
+
     def decorator(view_func):
         @wraps(view_func)
         def wrapped_view(request_or_self, *args, **kwargs):
             # 兼容类视图和函数视图
-            if hasattr(request_or_self, 'request'):
+            if hasattr(request_or_self, "request"):
                 # ViewSet的action，request_or_self是self
                 request = request_or_self.request
             else:
@@ -259,16 +262,17 @@ def permission_required(perm_code):
             if not request.user.is_authenticated:
                 return Response(
                     {"detail": "身份验证失败，请先登录"},
-                    status=http_status.HTTP_401_UNAUTHORIZED
+                    status=http_status.HTTP_401_UNAUTHORIZED,
                 )
 
             if not has_permission(request.user, perm_code):
                 return Response(
                     {"detail": f"您没有执行该操作的权限（需要权限：{perm_code}）"},
-                    status=http_status.HTTP_403_FORBIDDEN
+                    status=http_status.HTTP_403_FORBIDDEN,
                 )
 
             return view_func(request_or_self, *args, **kwargs)
 
         return wrapped_view
+
     return decorator

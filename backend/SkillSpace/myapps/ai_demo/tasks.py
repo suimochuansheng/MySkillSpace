@@ -1,8 +1,8 @@
 # backend/SkillSpace/myapps/ai_demo/tasks.py
 
+from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 
 from .model_loader import stream_generate_answer
 
@@ -10,7 +10,7 @@ from .model_loader import stream_generate_answer
 channel_layer = get_channel_layer()
 
 
-@shared_task(name='myapps.ai_demo.tasks.qwen_chat_task_streaming', bind=True)
+@shared_task(name="myapps.ai_demo.tasks.qwen_chat_task_streaming", bind=True)
 def qwen_chat_task_streaming(self, task_id, prompt, session_id=None, history=None):
     """
     AI 流式对话任务（通过 WebSocket 推送）
@@ -52,7 +52,7 @@ def qwen_chat_task_streaming(self, task_id, prompt, session_id=None, history=Non
                     "token": token,
                     "chunk_type": chunk_type,
                     "task_id": task_id,
-                }
+                },
             )
 
             # 如果收到结束信号，停止推送
@@ -78,14 +78,14 @@ def qwen_chat_task_streaming(self, task_id, prompt, session_id=None, history=Non
                 "token": f"系统错误: {str(e)}",
                 "chunk_type": "error",
                 "task_id": task_id,
-            }
+            },
         )
 
         return {"status": "error", "error": str(e)}
 
 
 # 保留原有的非流式任务（用于批量处理场景）
-@shared_task(name='myapps.ai_demo.tasks.qwen_chat_task', bind=True)
+@shared_task(name="myapps.ai_demo.tasks.qwen_chat_task", bind=True)
 def qwen_chat_task(self, prompt, resume_id=None):
     """
     AI 对话/分析任务（非流式，返回最终结果）

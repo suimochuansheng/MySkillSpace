@@ -3,6 +3,7 @@ import os
 import re
 import traceback
 from threading import Lock, Thread
+
 from django.conf import settings  # 引入 Django settings 以获取基准路径
 
 # 条件导入 AI 依赖（仅在可用时导入）
@@ -15,6 +16,7 @@ try:
         BitsAndBytesConfig,
         TextIteratorStreamer,
     )
+
     AI_AVAILABLE = True
 except ImportError:
     # AI 依赖不可用，定义占位符以避免运行时错误
@@ -52,7 +54,10 @@ ENABLE_MODEL_LOADING = os.getenv("ENABLE_AI_MODEL", "true").lower() == "true"
 ENABLE_FLASH_ATTENTION = os.getenv("ENABLE_FLASH_ATTENTION", "false").lower() == "true"
 
 print(f"AI模型加载开关：{'启用' if ENABLE_MODEL_LOADING else '禁用'}")
-print(f"Flash Attention: {'启用' if ENABLE_FLASH_ATTENTION else '禁用（安装后可启用）'}")
+print(
+    f"Flash Attention: {'启用' if ENABLE_FLASH_ATTENTION else '禁用（安装后可启用）'}"
+)
+
 
 def load_model_on_startup():
     """
@@ -92,7 +97,7 @@ def load_model_on_startup():
         # =========================================================
         # ⚡ 优化 2: 直接指定本地路径，跳过 snapshot_download
         # =========================================================
-        local_model_path = fr"{MODEL_CACHE_DIR}\Qwen\Qwen2___5-7B-Instruct"
+        local_model_path = rf"{MODEL_CACHE_DIR}\Qwen\Qwen2___5-7B-Instruct"
 
         # 检查路径是否存在
         if os.path.exists(local_model_path) and len(os.listdir(local_model_path)) > 0:
@@ -101,9 +106,7 @@ def load_model_on_startup():
         else:
             print("[WARNING] 本地路径无效，回退到 ModelScope 下载/校验模式...")
             model_dir = snapshot_download(
-                MODEL_NAME,
-                cache_dir=MODEL_CACHE_DIR,
-                revision="master"
+                MODEL_NAME, cache_dir=MODEL_CACHE_DIR, revision="master"
             )
 
         # =========================================================
@@ -115,7 +118,7 @@ def load_model_on_startup():
             trust_remote_code=True,
             padding_side="right",
             local_files_only=True,  # [OK] 跳过联网验证
-            resume_download=False   # [OK] 不尝试续传
+            resume_download=False,  # [OK] 不尝试续传
         )
         print("[OK] Tokenizer 加载完成")
 
@@ -146,43 +149,49 @@ def load_model_on_startup():
         # 如果启用 Flash Attention，添加参数
         if ENABLE_FLASH_ATTENTION:
             try:
-                import flash_attn
+                import flash_attn  # noqa: F401
+
                 model_kwargs["attn_implementation"] = "flash_attention_2"
                 print("[OPTIMIZE] Flash Attention 2 已启用")
             except ImportError:
                 print("[WARNING] Flash Attention 未安装，使用标准 Attention")
                 print("[TIP] 提示：pip install flash-attn --no-build-isolation")
 
-        model = AutoModelForCausalLM.from_pretrained(
-            model_dir,
-            **model_kwargs
-        ).eval()
+        model = AutoModelForCausalLM.from_pretrained(model_dir, **model_kwargs).eval()
 
         model_loaded = True
 
         # 显示加载信息
         print("✅ 模型加载成功！")
-        print(f"📊 Attention 实现: {getattr(model.config, '_attn_implementation', 'standard')}")
+        print(
+            f"📊 Attention 实现: {getattr(model.config, '_attn_implementation', 'standard')}"
+        )
 
         # 显示显存使用情况
         if torch.cuda.is_available():
             allocated = torch.cuda.memory_allocated(0) / 1024**3
             reserved = torch.cuda.memory_reserved(0) / 1024**3
-            print(f"💾 显存占用: {allocated:.2f}GB (已分配) / {reserved:.2f}GB (已预留)")
+            print(
+                f"💾 显存占用: {allocated:.2f}GB (已分配) / {reserved:.2f}GB (已预留)"
+            )
 
     except Exception as e:
         print(f"❌ 模型加载失败：{str(e)}")
         traceback.print_exc()
         model_loaded = False
 
+
 def get_model():
     if not AI_AVAILABLE:
-        raise RuntimeError("AI dependencies not installed. Please install required packages.")
+        raise RuntimeError(
+            "AI dependencies not installed. Please install required packages."
+        )
     if not ENABLE_MODEL_LOADING:
         raise RuntimeError("AI模型加载未启用")
     if not model_loaded or model is None:
         raise RuntimeError("模型尚未加载完成，请稍后再试")
     return model, tokenizer
+
 
 # --------------------------
 # Prompt 和 生成逻辑保持不变
@@ -203,6 +212,7 @@ SYSTEM_PROMPT = """你是一个乐于助人的AI助手。
 2. thinking标记内写思考过程
 3. answer标记内写最终答案
 """
+
 
 def stream_generate_answer(prompt: str, history: list = None):
     """
@@ -235,7 +245,9 @@ def stream_generate_answer(prompt: str, history: list = None):
     )
 
     inputs = loaded_tokenizer([text], return_tensors="pt").to(DEVICE)
-    streamer = TextIteratorStreamer(loaded_tokenizer, skip_prompt=True, skip_special_tokens=True)
+    streamer = TextIteratorStreamer(
+        loaded_tokenizer, skip_prompt=True, skip_special_tokens=True
+    )
 
     # =========================================================
     # ⚡ 优化 2: 生成参数优化（关键！）
@@ -244,10 +256,10 @@ def stream_generate_answer(prompt: str, history: list = None):
         inputs,
         streamer=streamer,
         max_new_tokens=2048,  # ✅ 从 1024 降到 512（减少生成时间）
-        do_sample=True, # 
+        do_sample=True,  #
         temperature=0.7,
         top_p=0.8,  # ✅ 从 0.9 降到 0.8（减少采样范围）
-        top_k=40,   # ✅ 添加 top_k 限制
+        top_k=40,  # ✅ 添加 top_k 限制
         repetition_penalty=1.1,  # ✅ 避免重复
         pad_token_id=loaded_tokenizer.eos_token_id,
         use_cache=True,  # ✅ 启用 KV cache
@@ -261,10 +273,10 @@ def stream_generate_answer(prompt: str, history: list = None):
     # ⚡ 优化 3: 流式输出优化（使用XML标记解析）
     # =========================================================
     # 预编译正则表达式
-    thinking_start_pattern = re.compile(r'<thinking>')
-    thinking_end_pattern = re.compile(r'</thinking>')
-    answer_start_pattern = re.compile(r'<answer>')
-    answer_end_pattern = re.compile(r'</answer>')
+    thinking_start_pattern = re.compile(r"<thinking>")
+    thinking_end_pattern = re.compile(r"</thinking>")
+    answer_start_pattern = re.compile(r"<answer>")
+    answer_end_pattern = re.compile(r"</answer>")
 
     current_type = "thinking"  # 当前状态：thinking/answer/none
     in_thinking = False
@@ -281,7 +293,7 @@ def stream_generate_answer(prompt: str, history: list = None):
             in_thinking = True
             current_type = "thinking"
             # 清除标记本身，不推送
-            buffer = re.sub(r'.*?<thinking>', '', buffer)
+            buffer = re.sub(r".*?<thinking>", "", buffer)
             continue
 
         # 检测</thinking>结束标记
@@ -289,7 +301,7 @@ def stream_generate_answer(prompt: str, history: list = None):
             in_thinking = False
             current_type = "none"
             # 清除标记本身
-            buffer = re.sub(r'</thinking>.*', '', buffer)
+            buffer = re.sub(r"</thinking>.*", "", buffer)
             if buffer:
                 yield {"token": buffer, "type": "thinking"}
             buffer = ""
@@ -300,7 +312,7 @@ def stream_generate_answer(prompt: str, history: list = None):
             in_answer = True
             current_type = "answer"
             # 清除标记本身
-            buffer = re.sub(r'.*?<answer>', '', buffer)
+            buffer = re.sub(r".*?<answer>", "", buffer)
             continue
 
         # 检测</answer>结束标记
@@ -308,7 +320,7 @@ def stream_generate_answer(prompt: str, history: list = None):
             in_answer = False
             current_type = "none"
             # 清除标记本身
-            buffer = re.sub(r'</answer>.*', '', buffer)
+            buffer = re.sub(r"</answer>.*", "", buffer)
             if buffer:
                 yield {"token": buffer, "type": "answer"}
             buffer = ""
@@ -317,13 +329,16 @@ def stream_generate_answer(prompt: str, history: list = None):
         # 推送正常内容
         if current_type in ["thinking", "answer"] and buffer:
             # 避免标记被拆分（等待下一个token确认）
-            if not buffer.endswith('<') and not buffer.endswith('</'):
+            if not buffer.endswith("<") and not buffer.endswith("</"):
                 yield {"token": buffer, "type": current_type}
                 buffer = ""
 
     # 处理剩余缓冲区
     if buffer:
-        yield {"token": buffer, "type": current_type if current_type != "none" else "answer"}
+        yield {
+            "token": buffer,
+            "type": current_type if current_type != "none" else "answer",
+        }
 
     # 流结束后发送 finish 信号
     yield {"token": "", "type": "finish"}
