@@ -1,0 +1,140 @@
+# ==================== CD（持续部署）工作流 ====================
+# 功能：构建Docker镜像并推送到阿里云容器镜像服务（ACR）
+# 触发：当代码推送到 main/master 分支时
+
+name: CD - 构建并推送镜像
+
+# 触发条件
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:  # 只有这些文件变化时才触发
+      - 'frontend/skillspace/**'
+      - 'backend/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/cd.yml'
+
+  # 支持手动触发（方便测试）
+  workflow_dispatch:
+
+# 环境变量（全局）
+env:
+  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+  ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+
+jobs:
+  # ==================== 任务1：构建后端镜像 ====================
+  build-backend:
+    name: 构建后端镜像
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码仓库
+        uses: actions/checkout@v4
+
+      # 2. 设置 Docker Buildx（支持缓存和多平台构建）
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录阿里云容器镜像服务
+      - name: 登录阿里云 ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 4. 构建并推送后端镜像
+      - name: 构建并推送后端镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend  # 构建上下文目录
+          file: ./backend/Dockerfile.prod  # Dockerfile路径
+          push: true  # 推送到远程仓库
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:${{ github.sha }}
+          # 缓存配置（加速后续构建）
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # 构建参数
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      # 5. 输出镜像信息
+      - name: 输出镜像信息
+        run: |
+          echo "✅ 后端镜像构建成功！"
+          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest"
+          echo "🏷️ Git SHA: ${{ github.sha }}"
+
+  # ==================== 任务2：构建前端镜像 ====================
+  build-frontend:
+    name: 构建前端镜像
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码仓库
+        uses: actions/checkout@v4
+
+      # 2. 设置 Docker Buildx
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录阿里云容器镜像服务
+      - name: 登录阿里云 ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 4. 构建并推送前端镜像
+      - name: 构建并推送前端镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend/skillspace  # 构建上下文目录
+          file: ./frontend/skillspace/Dockerfile  # Dockerfile路径
+          push: true  # 推送到远程仓库
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:${{ github.sha }}
+          # 缓存配置（加速后续构建）
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # 构建参数
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      # 5. 输出镜像信息
+      - name: 输出镜像信息
+        run: |
+          echo "✅ 前端镜像构建成功！"
+          echo "📦 镜像地址: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest"
+          echo "🏷️ Git SHA: ${{ github.sha }}"
+
+  # ==================== 任务3：构建总结 ====================
+  build-summary:
+    name: 构建总结
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]  # 等待前两个任务完成
+
+    steps:
+      - name: 输出构建总结
+        run: |
+          echo "========================================="
+          echo "🎉 所有镜像构建完成！"
+          echo "========================================="
+          echo ""
+          echo "📦 镜像列表："
+          echo "  - 后端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-backend:latest"
+          echo "  - 前端: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/skillspace-frontend:latest"
+          echo ""
+          echo "📝 下一步操作："
+          echo "  1. SSH登录到阿里云服务器"
+          echo "  2. 拉取最新镜像: docker-compose pull"
+          echo "  3. 重启服务: docker-compose up -d"
+          echo ""
+          echo "========================================="
