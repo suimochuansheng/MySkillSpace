@@ -1,0 +1,223 @@
+# cloud_servers.example.yaml
+# 云服务器监控配置文件示例
+#
+# 使用说明：
+# 1. 复制此文件为 cloud_servers.yaml
+# 2. 填写实际的服务器信息
+# 3. cloud_servers.yaml 不要提交到版本控制系统
+#
+# 注意：此文件包含敏感信息（密码、密钥），请妥善保管
+
+version: "1.0"
+
+# ============================================
+# 全局配置
+# ============================================
+global:
+  # 数据采集间隔（秒）
+  # Windows本地监控为1秒，云服务器监控建议10秒（考虑网络延迟）
+  collect_interval: 10
+
+  # SSH连接超时（秒）
+  ssh_timeout: 10
+
+  # 是否自动重连
+  auto_reconnect: true
+
+  # 最大重连次数
+  max_reconnect_attempts: 3
+
+  # 是否启用历史数据存储（暂未实现）
+  enable_history: false
+
+  # 是否启用告警功能（暂未实现）
+  enable_alerts: false
+
+  # 告警阈值配置
+  alerts:
+    cpu_warning: 80      # CPU使用率警告阈值 (%)
+    cpu_critical: 95     # CPU使用率严重阈值 (%)
+    memory_warning: 85   # 内存使用率警告阈值 (%)
+    memory_critical: 95  # 内存使用率严重阈值 (%)
+    disk_warning: 80     # 磁盘使用率警告阈值 (%)
+    disk_critical: 90    # 磁盘使用率严重阈值 (%)
+
+# ============================================
+# 云服务器列表
+# ============================================
+servers:
+  # ========== 服务器示例1：使用密码认证 ==========
+  - name: "示例生产服务器"
+    enabled: true      # 是否启用此服务器监控
+    tags:              # 服务器标签（用于分组管理）
+      - production
+      - web
+      - linux
+
+    # SSH连接配置
+    connection:
+      host: "192.168.1.100"        # 服务器IP或域名
+      port: 22                      # SSH端口
+      username: "root"              # SSH用户名
+      auth_type: "password"         # 认证方式：password 或 key
+      password: "your-password"     # SSH密码（使用密码认证时）
+      # private_key_path: "/path/to/private/key"  # SSH私钥路径（使用密钥认证时）
+      # passphrase: "key-passphrase"  # 私钥密码（如果私钥有密码）
+
+    # 监控配置
+    monitoring:
+      # 要监控的服务列表
+      services:
+        # Django应用
+        - name: "django"
+          type: "web"
+          process_pattern: "python.*manage.py|gunicorn|daphne"
+          port: 8000
+          # health_check_url: "http://localhost:8000/api/health"  # 健康检查URL（可选）
+
+        # Nginx Web服务器
+        - name: "nginx"
+          type: "web"
+          process_pattern: "nginx"
+          port: 80
+
+        # MySQL数据库
+        - name: "mysql"
+          type: "database"
+          process_pattern: "mysqld"
+          port: 3306
+          # db_host: "localhost"      # 数据库详细监控配置（可选）
+          # db_port: 3306
+          # db_user: "monitor"
+          # db_password: "password"
+
+        # Redis缓存
+        - name: "redis"
+          type: "cache"
+          process_pattern: "redis-server"
+          port: 6379
+          # redis_host: "localhost"   # Redis详细监控配置（可选）
+          # redis_port: 6379
+          # redis_password: "password"
+
+      # 是否监控Docker容器
+      enable_docker: true
+
+      # 要监控的磁盘分区（空列表表示监控所有分区）
+      # 示例: ["/", "/data", "/var/lib/mysql"]
+      disk_partitions: []
+
+      # 要监控的网络接口（空列表表示监控所有接口）
+      # 示例: ["eth0", "eth1"]
+      network_interfaces: []
+
+    # 告警配置（覆盖全局配置）
+    alerts:
+      cpu_critical: 90  # 生产环境CPU阈值可以设置更严格
+      email_notify: false
+      # email_recipients:
+      #   - "admin@example.com"
+
+  # ========== 服务器示例2：使用SSH密钥认证 ==========
+  - name: "示例测试服务器"
+    enabled: false      # 默认禁用，需要时改为true
+    tags:
+      - testing
+      - development
+
+    connection:
+      host: "test-server.example.com"
+      port: 22
+      username: "ubuntu"
+      auth_type: "key"
+      private_key_path: "/home/user/.ssh/test-server-key.pem"
+      # passphrase: ""  # 如果密钥没有密码，留空
+
+    monitoring:
+      services:
+        - name: "django"
+          type: "web"
+          process_pattern: "python.*manage.py"
+          port: 8000
+
+        - name: "postgresql"
+          type: "database"
+          process_pattern: "postgres"
+          port: 5432
+
+      enable_docker: false
+
+      disk_partitions: []
+      network_interfaces: []
+
+  # ========== 服务器示例3：数据库专用服务器 ==========
+  - name: "示例数据库服务器"
+    enabled: false
+    tags:
+      - database
+      - production
+
+    connection:
+      host: "db-server.example.com"
+      port: 22
+      username: "dbadmin"
+      auth_type: "password"
+      password: "db-password"
+
+    monitoring:
+      services:
+        - name: "mysql"
+          type: "database"
+          process_pattern: "mysqld"
+          port: 3306
+
+        - name: "redis"
+          type: "cache"
+          process_pattern: "redis-server"
+          port: 6379
+
+      enable_docker: false
+
+      # 重点监控数据库相关磁盘分区
+      disk_partitions:
+        - "/"
+        - "/data"
+        - "/var/lib/mysql"
+
+      network_interfaces: []
+
+    alerts:
+      disk_critical: 85  # 数据库服务器磁盘阈值更严格
+
+
+# ============================================
+# 配置说明
+# ============================================
+#
+# 1. 认证方式选择：
+#    - auth_type: "password" - 使用密码认证，需要提供 password 字段
+#    - auth_type: "key" - 使用SSH密钥认证，需要提供 private_key_path 字段
+#
+# 2. 服务类型说明：
+#    - web: Web服务器（nginx、apache、django、gunicorn等）
+#    - database: 数据库服务（mysql、postgresql、mongodb等）
+#    - cache: 缓存服务（redis、memcached等）
+#    - other: 其他服务
+#
+# 3. process_pattern 说明：
+#    - 使用正则表达式匹配进程名称
+#    - 用于检查服务是否运行
+#    - 可以使用 | 分隔多个匹配模式
+#
+# 4. 标签（tags）用途：
+#    - 用于服务器分组管理
+#    - 可以按标签批量启用/禁用监控
+#    - 前端可以按标签筛选显示
+#
+# 5. 安全建议：
+#    - 不要将此文件提交到Git仓库
+#    - 设置文件权限为 600（仅所有者可读写）
+#    - 考虑使用环境变量存储密码
+#    - 生产环境建议使用SSH密钥认证
+#
+# ============================================

@@ -143,16 +143,16 @@
 <script setup>
 import { authAPI } from '@/api';
 import {
-    Avatar,
-    ChatDotRound,
-    Check,
-    DataAnalysis,
-    Document,
-    Menu as IconMenu,
-    List,
-    Setting,
-    SwitchButton,
-    User
+  Avatar,
+  ChatDotRound,
+  Check,
+  DataAnalysis,
+  Document,
+  Menu as IconMenu,
+  List,
+  Setting,
+  SwitchButton,
+  User
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, ref, shallowRef } from 'vue';
@@ -162,8 +162,8 @@ import { useRouter } from 'vue-router'; // 导入路由
 const router = useRouter();
 
 // 导入模块组件
-import AiModule from './modules/AiModule.vue';
-import AnalyticsModule from './modules/AnalyticsModule.vue';
+  import AiModule from './modules/AiModule.vue';
+import MonitorDashboard from './modules/MonitorDashboard.vue';
 import ProfileModule from './modules/ProfileModule.vue';
 import ResumeModule from './modules/ResumeModule.vue';
 import TasksModule from './modules/TasksModule.vue';
@@ -218,8 +218,8 @@ const moduleConfig = {
     component: TasksModule
   },
   analytics: {
-    title: '数据分析',
-    component: AnalyticsModule
+    title: '系统监控',
+    component: MonitorDashboard
   },
   ai: {
     title: 'AI助手',
