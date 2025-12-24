@@ -267,21 +267,27 @@ CSRF_TRUSTED_ORIGINS = [
 # 指定 ASGI 应用（取代 WSGI）
 ASGI_APPLICATION = "SkillSpace.asgi.application"
 
-# Channel Layer 配置（使用 Redis 作为消息传输层）
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [
-                {
-                    "address": f"redis://:{os.getenv('REDIS_PASSWORD', '123456')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
-                }
-            ],
-            "capacity": 1500,  # 每个 channel 最大消息数
-            "expiry": 10,  # 消息过期时间（秒）
+# Channel Layer 配置（开发环境使用内存，生产环境使用 Redis）
+if DEBUG:
+    # 开发环境：使用内存通道层（不需要Redis）
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+else:
+    # 生产环境：使用 Redis 作为消息传输层
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [
+                    {
+                        "address": f"redis://:{os.getenv('REDIS_PASSWORD', '123456')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
+                    }
+                ],
+                "capacity": 1500,  # 每个 channel 最大消息数
+                "expiry": 10,  # 消息过期时间（秒）
+            },
         },
-    },
-}
+    }
+
 
 # AI 阿里云大模型
 # ================= 配置区域 =================

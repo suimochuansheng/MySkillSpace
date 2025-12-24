@@ -10,17 +10,17 @@ echo.
 
 REM 检查并安装依赖工具
 echo [1/4] 检查依赖工具...
-pip show black >nul 2>&1 || (
+pip show black >NUL 2>&1 || (
     echo 安装 black...
     pip install black
 )
 
-pip show isort >nul 2>&1 || (
+pip show isort >NUL 2>&1 || (
     echo 安装 isort...
     pip install isort
 )
 
-pip show flake8 >nul 2>&1 || (
+pip show flake8 >NUL 2>&1 || (
     echo 安装 flake8...
     pip install flake8
 )

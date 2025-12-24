@@ -79,6 +79,12 @@ temp/
 .env.production.local
 .env.backup
 
+# 云服务器监控配置文件（包含敏感信息：密码、SSH密钥）
+backend/SkillSpace/myapps/monitor/config/cloud_servers.yaml
+backend/SkillSpace/myapps/monitor/config/*.yaml.bak
+backend/SkillSpace/myapps/monitor/config/*.yaml~
+backend/SkillSpace/myapps/monitor/config/.*.sw?
+
 # ================= Python / Django 后端 =================
 # Python 字节码
 __pycache__/
