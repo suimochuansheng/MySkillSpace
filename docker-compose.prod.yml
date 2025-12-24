@@ -7,7 +7,7 @@
 services:
   # ==================== 1. 前端服务（Nginx + Vue） ====================
   frontend:
-    image: ${ALI_PUBLIC_HOST}/${PROJECT_NAME}/frontend:latest
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/frontend:latest
     container_name: skillspace_frontend
     restart: always
     ports:
@@ -25,7 +25,7 @@ services:
 
   # ==================== 2. 后端服务（Django + Daphne） ====================
   backend:
-    image: ${ALI_PUBLIC_HOST}/${PROJECT_NAME}/backend:latest
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/backend:latest
     container_name: skillspace_backend
     restart: always
     depends_on:
@@ -49,7 +49,7 @@ services:
 
   # ==================== 3. Celery Worker（异步任务处理） ====================
   celery_worker:
-    image: ${ALI_PUBLIC_HOST}/${PROJECT_NAME}/celery_worker:latest
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/celery_worker:latest
     container_name: skillspace_celery_worker
     restart: always
     command: celery -A SkillSpace worker --loglevel=info --concurrency=2
