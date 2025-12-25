@@ -48,11 +48,13 @@ model_loaded = False
 
 # 环境变量控制
 ENABLE_MODEL_LOADING = os.getenv("ENABLE_AI_MODEL", "true").lower() == "true"
+USE_AI_API = os.getenv("USE_AI_API", "false").lower() == "true"  # 新增：是否使用 API
 
 # Flash Attention 开关（需要先安装 flash-attn）
 # 安装命令：pip install flash-attn --no-build-isolation
 ENABLE_FLASH_ATTENTION = os.getenv("ENABLE_FLASH_ATTENTION", "false").lower() == "true"
 
+print(f"AI引擎模式：{'阿里云API' if USE_AI_API else '本地大模型'}")
 print(f"AI模型加载开关：{'启用' if ENABLE_MODEL_LOADING else '禁用'}")
 print(
     f"Flash Attention: {'启用' if ENABLE_FLASH_ATTENTION else '禁用（安装后可启用）'}"
@@ -62,6 +64,9 @@ print(
 def load_model_on_startup():
     """
     在应用启动时加载模型
+
+    注意：如果使用 API 模式（USE_AI_API=True），则跳过本地模型加载
+
     优化要点：
     1. 跳过联网验证（local_files_only=True）
     2. 直接指定设备（device_map="cuda:0"）
@@ -71,6 +76,14 @@ def load_model_on_startup():
     """
     global model, tokenizer, model_loaded
 
+    # =========================================================
+    # 🚀 如果使用 API 模式，跳过本地模型加载
+    # =========================================================
+    if USE_AI_API:
+        print("[INFO] [ModelLoader] 检测到 USE_AI_API=True，跳过本地模型加载")
+        print("[INFO] 将使用阿里云通义千问 API")
+        return
+
     # 检查 AI 依赖是否可用
     if not AI_AVAILABLE:
         print("[WARNING] AI dependencies not installed. Skipping model loading.")
@@ -79,7 +92,7 @@ def load_model_on_startup():
     if not ENABLE_MODEL_LOADING:
         return
 
-    print("[INFO] [ModelLoader] 准备加载 AI 模型...")
+    print("[INFO] [ModelLoader] 准备加载本地 AI 模型...")
     print(f"[DIR] 缓存目录: {MODEL_CACHE_DIR}")
 
     try:
@@ -216,7 +229,12 @@ SYSTEM_PROMPT = """你是一个乐于助人的AI助手。
 
 def stream_generate_answer(prompt: str, history: list = None):
     """
-    流式生成答案
+    流式生成答案（支持双引擎切换）
+
+    根据环境变量 USE_AI_API 选择：
+    - True: 使用阿里云 API（云端部署）
+    - False: 使用本地大模型（本地演示）
+
     优化要点：
     1. 优化生成参数（max_new_tokens, top_p, top_k）
     2. 启用 KV cache
@@ -224,6 +242,21 @@ def stream_generate_answer(prompt: str, history: list = None):
     """
     if history is None:
         history = []
+
+    # =========================================================
+    # ⚡ 引擎选择：根据环境变量决定使用 API 还是本地模型
+    # =========================================================
+    if USE_AI_API:
+        print("[INFO] 使用阿里云 API 引擎")
+        from .api_engine import stream_generate_answer_api
+
+        yield from stream_generate_answer_api(prompt, history)
+        return
+
+    # =========================================================
+    # 以下是本地大模型引擎逻辑
+    # =========================================================
+    print("[INFO] 使用本地大模型引擎")
 
     try:
         loaded_model, loaded_tokenizer = get_model()
