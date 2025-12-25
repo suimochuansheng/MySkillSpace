@@ -1,6 +1,10 @@
 """
 修复通过Django Admin创建的用户密码问题
-如果在admin中直接设置密码字段,密码不会被加密,导致无法登录
+如果在admin中直接设置密码字段，密码不会被加密，导致无法登录
+
+使用方法:
+    cd /path/to/skillspace/backend/scripts
+    python fix_passwords.py
 """
 
 import os
@@ -8,11 +12,16 @@ import sys
 
 import django
 
+# 添加项目根目录到Python路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(current_dir)
+sys.path.insert(0, backend_dir)
+
 # 设置Django环境
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SkillSpace.settings")
 django.setup()
 
-from myapps.auth_system.models import User
+from auth_system.models import User
 
 
 def check_and_fix_passwords():
