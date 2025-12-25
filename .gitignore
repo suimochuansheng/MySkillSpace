@@ -248,6 +248,9 @@ huggingface_cache/
 .cache/huggingface/
 .cache/torch/
 
+# 本地大模型测试脚本（仅本地使用，不提交）
+backend/scripts/test_ai_engine.py
+
 # 保留模型配置文件（不忽略）
 !backend/qwen_model_cache/**/README.md
 !backend/qwen_model_cache/**/config.json
