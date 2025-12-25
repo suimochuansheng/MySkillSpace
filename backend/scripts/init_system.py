@@ -73,47 +73,70 @@ def create_default_roles():
     print_section("步骤3: 创建默认角色")
 
     try:
-        # 创建系统管理员角色
-        admin_role, created = Role.objects.get_or_create(
-            code="admin",
-            defaults={
-                "name": "系统管理员",
-                "remark": "系统管理员，拥有所有权限",
-            },
-        )
+        # ========== 创建/更新系统管理员角色 ==========
+        # 先尝试按 code 查询，如果不存在则按 name 查询（兼容旧数据）
+        try:
+            admin_role = Role.objects.get(code="admin")
+            created = False
+            print(f"ℹ️  角色已存在（按code查询）: {admin_role.name}")
+        except Role.DoesNotExist:
+            try:
+                admin_role = Role.objects.get(name="系统管理员")
+                # 更新 code
+                admin_role.code = "admin"
+                admin_role.remark = "系统管理员，拥有所有权限"
+                admin_role.save()
+                created = False
+                print(f"ℹ️  角色已存在（按name查询）: {admin_role.name}，已更新code")
+            except Role.DoesNotExist:
+                # 都不存在，创建新角色
+                admin_role = Role.objects.create(
+                    code="admin",
+                    name="系统管理员",
+                    remark="系统管理员，拥有所有权限",
+                )
+                created = True
+                print(f"✅ 创建角色: {admin_role.name}")
 
+        # 分配所有菜单权限
+        all_menus = Menu.objects.all()
+        admin_role.menus.set(all_menus)
         if created:
-            print(f"✅ 创建角色: {admin_role.name}")
-            # 分配所有菜单
-            all_menus = Menu.objects.all()
-            admin_role.menus.set(all_menus)
             print(f"   已分配 {all_menus.count()} 个菜单权限")
         else:
-            print(f"ℹ️  角色已存在: {admin_role.name}")
-            # 确保拥有所有菜单
-            all_menus = Menu.objects.all()
-            admin_role.menus.set(all_menus)
             print(f"   已更新菜单权限: {all_menus.count()} 个")
 
-        # 创建普通用户角色
-        normal_role, created = Role.objects.get_or_create(
-            code="normal",
-            defaults={
-                "name": "普通用户",
-                "remark": "普通用户，只有基础功能权限",
-            },
-        )
+        # ========== 创建/更新普通用户角色 ==========
+        try:
+            normal_role = Role.objects.get(code="normal")
+            created = False
+            print(f"ℹ️  角色已存在（按code查询）: {normal_role.name}")
+        except Role.DoesNotExist:
+            try:
+                normal_role = Role.objects.get(name="普通用户")
+                # 更新 code
+                normal_role.code = "normal"
+                normal_role.remark = "普通用户，只有基础功能权限"
+                normal_role.save()
+                created = False
+                print(f"ℹ️  角色已存在（按name查询）: {normal_role.name}，已更新code")
+            except Role.DoesNotExist:
+                # 都不存在，创建新角色
+                normal_role = Role.objects.create(
+                    code="normal",
+                    name="普通用户",
+                    remark="普通用户，只有基础功能权限",
+                )
+                created = True
+                print(f"✅ 创建角色: {normal_role.name}")
 
+        # 分配基础菜单（工作台、AI简历、AI助手）
+        basic_menus = Menu.objects.filter(name__in=["工作台", "AI简历诊断", "AI助手"])
+        normal_role.menus.set(basic_menus)
         if created:
-            print(f"✅ 创建角色: {normal_role.name}")
-            # 分配基础菜单（工作台、AI简历、AI助手）
-            basic_menus = Menu.objects.filter(
-                name__in=["工作台", "AI简历诊断", "AI助手"]
-            )
-            normal_role.menus.set(basic_menus)
             print(f"   已分配 {basic_menus.count()} 个基础菜单")
         else:
-            print(f"ℹ️  角色已存在: {normal_role.name}")
+            print(f"   已更新菜单权限: {basic_menus.count()} 个")
 
         return True, admin_role
 
