@@ -75,10 +75,9 @@ def create_default_roles():
     try:
         # 创建系统管理员角色
         admin_role, created = Role.objects.get_or_create(
-            role_key="admin",
+            code="admin",
             defaults={
                 "name": "系统管理员",
-                "status": "1",
                 "remark": "系统管理员，拥有所有权限",
             },
         )
@@ -98,10 +97,9 @@ def create_default_roles():
 
         # 创建普通用户角色
         normal_role, created = Role.objects.get_or_create(
-            role_key="normal",
+            code="normal",
             defaults={
                 "name": "普通用户",
-                "status": "1",
                 "remark": "普通用户，只有基础功能权限",
             },
         )
@@ -193,7 +191,7 @@ def print_summary():
     # 角色详情
     print("\n👥 角色列表:")
     for role in Role.objects.all():
-        print(f"  - {role.name} ({role.role_key}): {role.menus.count()} 个菜单权限")
+        print(f"  - {role.name} ({role.code}): {role.menus.count()} 个菜单权限")
 
     # 管理员信息
     print("\n🔑 管理员账号:")
