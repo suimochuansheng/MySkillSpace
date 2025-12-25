@@ -29,11 +29,16 @@ def build_menu_tree(menu_queryset):
     将扁平的菜单QuerySet转换为树形结构
     """
     menu_list = list(menu_queryset)
-    menu_dict = {menu.id: menu for menu in menu_list}
-    roots = []
 
+    # 第一步：为所有菜单初始化children_list属性，并建立id字典
+    menu_dict = {}
     for menu in menu_list:
         menu.children_list = []  # 初始化临时属性
+        menu_dict[menu.id] = menu
+
+    # 第二步：建立父子关系
+    roots = []
+    for menu in menu_list:
         parent_id = menu.parent_id
         if parent_id and parent_id in menu_dict:
             parent_menu = menu_dict[parent_id]
@@ -359,6 +364,12 @@ class MenuManagementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # 按照order_num排序
         return Menu.objects.all().order_by("order_num")
+
+    def list(self, request, *args, **kwargs):
+        """重写list方法，返回菜单树结构"""
+        menus = self.get_queryset()
+        menu_tree = build_menu_tree(menus)
+        return Response(MenuSerializer(menu_tree, many=True).data)
 
     def destroy(self, request, *args, **kwargs):
         """重写删除方法，防止删除核心菜单"""

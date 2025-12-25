@@ -2,124 +2,33 @@
 /**
  * Vue Router 配置
  * 定义应用的所有路由规则和导航守卫
+ *
+ * 架构说明：
+ * 1. 基础路由：登录、403、404等无需认证的页面
+ * 2. 应用路由：所有需要认证的页面都在MainLayout下，实现统一布局和菜单
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { setupRouterPermission } from './permission'
 
 /**
- * 路由配置
- * 
- * meta字段说明:
- * - title: 页面标题
- * - icon: 菜单图标（Element Plus图标名称）
- * - requiresAuth: 是否需要登录（默认true）
- * - keepAlive: 是否缓存页面（默认false）
+ * 基础路由（无需权限控制）
  */
-const routes = [
+const basicRoutes = [
   // 根路径重定向
   {
     path: '/',
     redirect: '/dashboard'
   },
-  
+
   // 登录页面
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/LoginPage.vue'),
-    meta: { 
+    meta: {
       requiresAuth: false,
       title: '用户登录'
-    }
-  },
-  
-  // 主应用页面（Dashboard）
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('@/views/dashboard/DashboardPage.vue'),
-    meta: { 
-      requiresAuth: true,
-      title: '工作台'
-    }
-  },
-  
-  // 权限管理系统路由
-  {
-    path: '/sys',
-    redirect: '/sys/user',
-    meta: { 
-      requiresAuth: true,
-      title: '系统管理'
-    },
-    children: [
-      {
-        path: 'user',
-        name: 'UserManagement',
-        component: () => import('@/views/sys/user/index.vue'),
-        meta: { 
-          title: '用户管理', 
-          icon: 'User',
-          requiresAuth: true,
-          permission: 'system:user:list'
-        }
-      },
-      {
-        path: 'role',
-        name: 'RoleManagement',
-        component: () => import('@/views/sys/role/index.vue'),
-        meta: { 
-          title: '角色管理', 
-          icon: 'UserFilled',
-          requiresAuth: true,
-          permission: 'system:role:list'
-        }
-      },
-      {
-        path: 'menu',
-        name: 'MenuManagement',
-        component: () => import('@/views/sys/menu/index.vue'),
-        meta: { 
-          title: '菜单管理', 
-          icon: 'Menu',
-          requiresAuth: true,
-          permission: 'system:menu:list'
-        }
-      },
-      {
-        path: 'operationlog',
-        name: 'OperationLogManagement',
-        component: () => import('@/views/sys/operationlog/index.vue'),
-        meta: { 
-          title: '操作日志', 
-          icon: 'DocumentCopy',
-          requiresAuth: true,
-          permission: 'monitor:operlog:list'
-        }
-      },
-      {
-        path: 'loginlog',
-        name: 'LoginLogManagement',
-        component: () => import('@/views/sys/loginlog/index.vue'),
-        meta: { 
-          title: '登录日志', 
-          icon: 'Document',
-          requiresAuth: true,
-          permission: 'monitor:loginlog:list'
-        }
-      }
-    ]
-  },
-  
-  // 404页面（可选）
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/login/LoginPage.vue'), // 临时重定向到登录页
-    meta: { 
-      requiresAuth: false,
-      title: '页面不存在'
     }
   },
 
@@ -132,7 +41,157 @@ const routes = [
       requiresAuth: false,
       title: '权限拒绝'
     }
+  },
+
+  // 404页面
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/login/LoginPage.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '页面不存在'
+    }
   }
+]
+
+/**
+ * 应用主路由（需要认证，使用MainLayout包装）
+ */
+const mainLayoutRoute = {
+  path: '/',
+  component: () => import('@/views/layout/MainLayout.vue'),
+  meta: { requiresAuth: true },
+  children: [
+    // 工作台首页
+    {
+      path: 'dashboard',
+      name: 'Dashboard',
+      component: () => import('@/views/dashboard/HomePage.vue'),
+      meta: {
+        title: '工作台',
+        permission: 'dashboard:view'
+      }
+    },
+
+    // AI简历诊断
+    {
+      path: 'resume',
+      name: 'Resume',
+      component: () => import('@/views/resume/ResumePage.vue'),
+      meta: {
+        title: 'AI简历诊断',
+        permission: 'resume:view'
+      }
+    },
+
+    // 任务中心
+    {
+      path: 'tasks',
+      name: 'Tasks',
+      component: () => import('@/views/tasks/TasksPage.vue'),
+      meta: {
+        title: '任务中心',
+        permission: 'tasks:view'
+      }
+    },
+
+    // 系统监控
+    {
+      path: 'monitor',
+      name: 'Monitor',
+      component: () => import('@/views/monitor/MonitorPage.vue'),
+      meta: {
+        title: '系统监控',
+        permission: 'monitor:view'
+      }
+    },
+
+    // AI助手
+    {
+      path: 'ai',
+      name: 'Ai',
+      component: () => import('@/views/ai/AiPage.vue'),
+      meta: {
+        title: 'AI助手',
+        permission: 'ai:view'
+      }
+    },
+
+    // 系统管理（重定向到用户管理）
+    {
+      path: 'sys',
+      redirect: '/sys/user'
+    },
+
+    // 用户管理
+    {
+      path: 'sys/user',
+      name: 'UserManagement',
+      component: () => import('@/views/sys/user/index.vue'),
+      meta: {
+        title: '用户管理',
+        icon: 'User',
+        permission: 'system:user:list'
+      }
+    },
+
+    // 角色管理
+    {
+      path: 'sys/role',
+      name: 'RoleManagement',
+      component: () => import('@/views/sys/role/index.vue'),
+      meta: {
+        title: '角色管理',
+        icon: 'Avatar',
+        permission: 'system:role:list'
+      }
+    },
+
+    // 菜单管理
+    {
+      path: 'sys/menu',
+      name: 'MenuManagement',
+      component: () => import('@/views/sys/menu/index.vue'),
+      meta: {
+        title: '菜单管理',
+        icon: 'Menu',
+        permission: 'system:menu:list'
+      }
+    },
+
+    // 操作日志
+    {
+      path: 'sys/operlog',
+      name: 'OperationLogManagement',
+      component: () => import('@/views/sys/operationlog/index.vue'),
+      meta: {
+        title: '操作日志',
+        icon: 'DocumentCopy',
+        permission: 'monitor:operlog:list'
+      }
+    },
+
+    // 登录日志
+    {
+      path: 'sys/loginlog',
+      name: 'LoginLogManagement',
+      component: () => import('@/views/sys/loginlog/index.vue'),
+      meta: {
+        title: '登录日志',
+        icon: 'Document',
+        permission: 'monitor:loginlog:list'
+      }
+    }
+  ]
+}
+
+/**
+ * 合并所有路由
+ */
+const routes = [
+  ...basicRoutes,
+  mainLayoutRoute
 ]
 
 // 创建路由实例
