@@ -24,14 +24,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制requirements.txt并安装Python依赖
-# 先复制requirements.txt可以利用Docker缓存层
-COPY requirements.txt .
+# 复制requirements-full.txt并安装Python依赖
+# 先复制requirements可以利用Docker缓存层
+COPY requirements-full.txt .
 
 # 安装Python依赖（使用清华源加速）
 # --no-cache-dir: 不缓存pip包，减小镜像体积
-# 注意：requirements.txt 中已包含 channels, daphne, channels-redis 等依赖
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+# 注意：requirements-full.txt 已优化，只包含 API 模式需要的依赖
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-full.txt
 
 # 复制项目代码
 COPY . .

@@ -33,7 +33,7 @@ services:
       - redis
       - rabbitmq
     env_file:
-      - .env  # 使用生产环境变量文件
+      - .env.production  # 使用生产环境变量文件
     ports:
       - "8000:8000"  # 仅供内部访问，外部通过Nginx代理
     volumes:
@@ -66,7 +66,7 @@ services:
       - redis
       - rabbitmq
     env_file:
-      - .env  # 使用生产环境变量文件
+      - .env.production  # 使用生产环境变量文件
     volumes:
       - media_volume:/app/SkillSpace/media
 
