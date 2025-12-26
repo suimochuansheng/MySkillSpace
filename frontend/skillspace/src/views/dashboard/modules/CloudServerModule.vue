@@ -102,10 +102,10 @@
           </el-card>
 
           <!-- 服务状态卡片 -->
-          <el-card shadow="hover" class="info-card-large">
+          <el-card shadow="hover" class="info-card-large" v-if="cloudData.services && cloudData.services.length > 0">
             <div class="chart-header">
               <el-icon class="chart-icon service-icon"><DataAnalysis /></el-icon>
-              <span class="chart-title">服务状态</span>
+              <span class="chart-title">宿主机服务状态</span>
             </div>
             <div class="services-grid">
               <div
@@ -131,7 +131,7 @@
           </el-card>
 
           <!-- Docker容器卡片 -->
-          <el-card shadow="hover" class="info-card-large" v-if="cloudData.containers.length > 0">
+          <el-card shadow="hover" class="info-card-large" v-if="cloudData.containers && cloudData.containers.length > 0">
             <div class="chart-header">
               <el-icon class="chart-icon docker-icon"><Box /></el-icon>
               <span class="chart-title">Docker 容器</span>
@@ -149,11 +149,30 @@
                     :type="container.status === 'running' ? 'success' : 'warning'"
                     size="small"
                   >
-                    {{ container.status }}
+                    {{ container.status === 'running' ? '运行中' : '已停止' }}
                   </el-tag>
                 </div>
                 <div class="container-info">
-                  <span>镜像: {{ container.image }}</span>
+                  <div class="info-row">
+                    <span class="info-label">镜像:</span>
+                    <span class="info-value">{{ container.image }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">ID:</span>
+                    <span class="info-value mono">{{ container.container_id }}</span>
+                  </div>
+                  <div class="info-row" v-if="container.status_detail">
+                    <span class="info-label">状态:</span>
+                    <span class="info-value">{{ container.status_detail }}</span>
+                  </div>
+                  <div class="info-row" v-if="container.cpu_percent">
+                    <span class="info-label">CPU:</span>
+                    <span class="info-value">{{ container.cpu_percent }}</span>
+                  </div>
+                  <div class="info-row" v-if="container.memory_usage">
+                    <span class="info-label">内存:</span>
+                    <span class="info-value">{{ container.memory_usage }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -568,6 +587,12 @@ const connectWebSocket = () => {
     },
     onMessage: (data) => {
       if (data.type === 'cloud_status' && data.data) {
+        // 防御性检查：确保数据结构完整
+        if (!data.data.cpu || !data.data.memory || !data.data.disk || !data.data.network) {
+          console.error('云监控数据格式不完整:', data.data);
+          return;
+        }
+
         cloudData.value = data.data;
         lastUpdateTime.value = data.data.timestamp || new Date().toLocaleTimeString();
         updateCharts(data.data);
@@ -839,8 +864,32 @@ onUnmounted(() => {
 }
 
 .container-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   font-size: 12px;
   color: #606266;
+}
+
+.container-info .info-row {
+  display: flex;
+  gap: 8px;
+}
+
+.container-info .info-label {
+  font-weight: 600;
+  color: #909399;
+  min-width: 45px;
+}
+
+.container-info .info-value {
+  color: #303133;
+  flex: 1;
+}
+
+.container-info .info-value.mono {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
 }
 
 /* 响应式设计 */
