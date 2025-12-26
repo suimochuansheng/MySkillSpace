@@ -557,7 +557,8 @@ const updateCharts = (data) => {
 // 连接 WebSocket
 const connectWebSocket = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = import.meta.env.VITE_WS_HOST || 'localhost:8000';
+  // 动态获取主机地址，自动适配本地和云端
+  const host = import.meta.env.VITE_WS_HOST || window.location.host;
   const url = `${protocol}//${host}/ws/monitor/cloud/${encodeURIComponent(props.serverName)}/`;
 
   wsManager = new WebSocketManager(url, {
