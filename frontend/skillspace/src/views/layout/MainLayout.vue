@@ -104,7 +104,8 @@ const permissionStore = usePermissionStore();
 
 const currentUser = computed(() => permissionStore.user);
 const menuList = computed(() => permissionStore.menuList);
-const currentAvatar = ref('http://localhost:8000/static/avatars/avatar1.svg');
+// 使用相对路径，由 Nginx 代理到后端
+const currentAvatar = ref('/static/avatars/avatar1.svg');
 
 // 过滤菜单列表，移除工作台（因为已在顶部固定显示）
 const filteredMenuList = computed(() => {

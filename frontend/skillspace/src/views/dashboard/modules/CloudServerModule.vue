@@ -568,6 +568,12 @@ const connectWebSocket = () => {
     },
     onMessage: (data) => {
       if (data.type === 'cloud_status' && data.data) {
+        // 防御性检查：确保数据结构完整
+        if (!data.data.cpu || !data.data.memory || !data.data.disk || !data.data.network) {
+          console.error('云监控数据格式不完整:', data.data);
+          return;
+        }
+
         cloudData.value = data.data;
         lastUpdateTime.value = data.data.timestamp || new Date().toLocaleTimeString();
         updateCharts(data.data);
