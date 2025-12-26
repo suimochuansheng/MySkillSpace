@@ -358,26 +358,27 @@ class CloudServerCollector:
                 return []
 
             # 获取容器列表
-            # 格式：name|status|image|created
-            docker_cmd = "docker ps -a --format '{{.Names}}|{{.Status}}|{{.Image}}|{{.CreatedAt}}'"
+            # 格式：id|name|status|image|created
+            docker_cmd = "docker ps -a --format '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.CreatedAt}}'"
             docker_result = self.ssh.execute_command(docker_cmd)
 
             containers = []
             for line in docker_result["stdout"].split("\n"):
                 if line.strip():
                     parts = line.split("|")
-                    if len(parts) >= 3:
+                    if len(parts) >= 4:
                         # 解析状态（Up 2 hours 或 Exited (0) 2 hours ago）
-                        status_str = parts[1]
+                        status_str = parts[2]
                         is_running = status_str.startswith("Up")
 
                         containers.append(
                             {
-                                "name": parts[0],
+                                "container_id": parts[0],  # Docker容器ID
+                                "name": parts[1],  # 容器名称
                                 "status": "running" if is_running else "stopped",
                                 "status_detail": status_str,
-                                "image": parts[2],
-                                "created": parts[3] if len(parts) > 3 else None,
+                                "image": parts[3],
+                                "created": parts[4] if len(parts) > 4 else None,
                             }
                         )
 
