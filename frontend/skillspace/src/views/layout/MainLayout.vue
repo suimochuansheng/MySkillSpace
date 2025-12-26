@@ -74,7 +74,12 @@
         <!-- 主内容区域 -->
         <el-container class="content-container">
           <el-main class="layout-main">
-            <router-view />
+            <!-- 使用 keep-alive 缓存监控页面，避免频繁切换导致重新加载 -->
+            <router-view v-slot="{ Component }">
+              <keep-alive :include="['MonitorPage']">
+                <component :is="Component" />
+              </keep-alive>
+            </router-view>
           </el-main>
 
           <el-footer class="layout-footer">
