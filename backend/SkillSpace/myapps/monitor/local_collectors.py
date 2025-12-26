@@ -26,6 +26,18 @@ class LocalLinuxCollector:
         self.hostname = socket.gethostname()
         logger.info(f"初始化本地Linux监控: {self.hostname}")
 
+    def _bytes_to_gb(self, bytes_value):
+        """
+        字节转GB
+
+        Args:
+            bytes_value: 字节数
+
+        Returns:
+            GB数值（保留2位小数）
+        """
+        return round(bytes_value / (1024**3), 2)
+
     def collect_all(self) -> Dict:
         """
         采集所有系统数据
@@ -141,21 +153,21 @@ class LocalLinuxCollector:
         采集内存信息
 
         Returns:
-            内存信息字典
+            内存信息字典（容量单位：GB）
         """
         try:
             mem = psutil.virtual_memory()
             swap = psutil.swap_memory()
 
             return {
-                "total": mem.total,
-                "available": mem.available,
-                "used": mem.used,
-                "free": mem.free,
+                "total": self._bytes_to_gb(mem.total),
+                "available": self._bytes_to_gb(mem.available),
+                "used": self._bytes_to_gb(mem.used),
+                "free": self._bytes_to_gb(mem.free),
                 "usage_percent": round(mem.percent, 2),
-                "swap_total": swap.total,
-                "swap_used": swap.used,
-                "swap_free": swap.free,
+                "swap_total": self._bytes_to_gb(swap.total),
+                "swap_used": self._bytes_to_gb(swap.used),
+                "swap_free": self._bytes_to_gb(swap.free),
                 "swap_percent": round(swap.percent, 2),
             }
         except Exception as e:
@@ -167,7 +179,7 @@ class LocalLinuxCollector:
         采集磁盘信息
 
         Returns:
-            磁盘信息字典
+            磁盘信息字典（容量单位：GB）
         """
         try:
             # 获取所有磁盘分区
@@ -194,9 +206,9 @@ class LocalLinuxCollector:
                         {
                             "mountpoint": partition.mountpoint,
                             "fstype": partition.fstype,
-                            "total": usage.total,
-                            "used": usage.used,
-                            "free": usage.free,
+                            "total": self._bytes_to_gb(usage.total),
+                            "used": self._bytes_to_gb(usage.used),
+                            "free": self._bytes_to_gb(usage.free),
                             "percent": round(usage.percent, 2),
                         }
                     )
@@ -208,9 +220,9 @@ class LocalLinuxCollector:
             )
 
             return {
-                "total": total_size,
-                "used": total_used,
-                "free": total_free,
+                "total": self._bytes_to_gb(total_size),
+                "used": self._bytes_to_gb(total_used),
+                "free": self._bytes_to_gb(total_free),
                 "usage_percent": usage_percent,
                 "partitions": partition_list,
             }
@@ -229,14 +241,14 @@ class LocalLinuxCollector:
         采集网络信息
 
         Returns:
-            网络信息字典
+            网络信息字典（流量单位：GB）
         """
         try:
             net_io = psutil.net_io_counters()
 
             return {
-                "bytes_sent": net_io.bytes_sent,
-                "bytes_recv": net_io.bytes_recv,
+                "bytes_sent": self._bytes_to_gb(net_io.bytes_sent),
+                "bytes_recv": self._bytes_to_gb(net_io.bytes_recv),
                 "packets_sent": net_io.packets_sent,
                 "packets_recv": net_io.packets_recv,
                 "errin": net_io.errin,

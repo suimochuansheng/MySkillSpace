@@ -1,10 +1,10 @@
 <template>
   <div class="monitor-dashboard">
     <el-tabs v-model="activeTab" type="card" class="monitor-tabs">
-      <el-tab-pane label="云服务器监控 (Linux)" name="cloud">
+      <el-tab-pane label="云服务器监控 (远程)" name="cloud">
         <CloudServerModule :server-name="selectedServer" />
       </el-tab-pane>
-      <el-tab-pane label="本地系统监控 (Windows)" name="windows">
+      <el-tab-pane label="本机系统监控" name="local">
         <AnalyticsModule />
       </el-tab-pane>
     </el-tabs>
