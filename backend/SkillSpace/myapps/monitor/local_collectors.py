@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import psutil
+from django.db import connection
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class LocalLinuxCollector:
                 "memory": self.collect_memory_info(),
                 "disk": self.collect_disk_info(),
                 "network": self.collect_network_info(),
+                "database": self.collect_database_info(),  # 添加数据库信息
                 "services": [],  # 可选：如果需要监控服务
                 "containers": [],  # 可选：如果需要监控Docker
             }
@@ -285,6 +287,43 @@ class LocalLinuxCollector:
         except Exception as e:
             logger.error(f"检查服务状态失败: {service_name} - {e}")
             return {"name": service_name, "status": "unknown", "pid": None}
+
+    def collect_database_info(self) -> Dict:
+        """
+        采集数据库连接信息
+
+        Returns:
+            数据库信息字典
+        """
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT version()")
+                db_version = cursor.fetchone()[0] if cursor.rowcount > 0 else "Unknown"
+
+                cursor.execute(
+                    """
+                    SELECT pg_database.datname,
+                           pg_size_pretty(pg_database_size(pg_database.datname)) AS size
+                    FROM pg_database
+                    WHERE datname = current_database()
+                """
+                )
+                db_size_result = cursor.fetchone()
+                db_size = db_size_result[1] if db_size_result else "Unknown"
+
+                return {
+                    "version": db_version,
+                    "database_name": connection.settings_dict["NAME"],
+                    "size": db_size,
+                    "status": "connected",
+                }
+        except Exception as e:
+            logger.error(f"获取数据库信息失败: {e}")
+            return {
+                "database_name": "Unknown",
+                "status": "error",
+                "message": str(e),
+            }
 
 
 # 单例模式
