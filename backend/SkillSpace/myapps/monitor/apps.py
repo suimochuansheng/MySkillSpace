@@ -14,8 +14,10 @@ class MonitorConfig(AppConfig):
 
         logger = logging.getLogger(__name__)
 
-        # 只在主进程中启动监控任务（避免 runserver 的自动重载导致重复启动）
-        if os.environ.get("RUN_MAIN") == "true":
+        # 检测是否在 worker 进程中运行（避免在主进程重复启动）
+        # 开发环境：只在 RUN_MAIN=true 时启动
+        # 生产环境：直接启动（Daphne/Gunicorn）
+        if os.environ.get("RUN_MAIN") == "true" or not os.environ.get("RUN_MAIN"):
             # 检测操作系统并启动相应的本地监控任务
             current_os = platform.system()
             logger.info(f"检测到操作系统: {current_os}")

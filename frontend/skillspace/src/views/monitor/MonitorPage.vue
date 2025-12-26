@@ -6,6 +6,11 @@
 
 <script setup>
 import MonitorDashboard from '@/views/dashboard/modules/MonitorDashboard.vue';
+
+// 定义组件名称，用于 keep-alive 缓存
+defineOptions({
+  name: 'MonitorPage'
+});
 </script>
 
 <style scoped>
