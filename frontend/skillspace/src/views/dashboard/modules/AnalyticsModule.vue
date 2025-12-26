@@ -16,8 +16,27 @@
       </template>
 
       <div class="module-content">
-        <!-- 使用 Grid 布局 -->
-        <div class="dashboard-grid">
+        <!-- Linux环境提示信息 -->
+        <div v-if="isLinuxEnvironment" class="environment-notice">
+          <el-result
+            icon="info"
+            title="Windows系统监控"
+            sub-title="此功能仅在Windows开发环境可用"
+          >
+            <template #extra>
+              <el-descriptions :column="1" border>
+                <el-descriptions-item label="当前系统">{{ systemData.system.platform }}</el-descriptions-item>
+                <el-descriptions-item label="主机名">{{ systemData.system.hostname }}</el-descriptions-item>
+                <el-descriptions-item label="说明">
+                  当前服务器运行在 {{ systemData.system.platform }} 环境下。如需查看本服务器监控数据，请访问"云服务器监控"标签页。
+                </el-descriptions-item>
+              </el-descriptions>
+            </template>
+          </el-result>
+        </div>
+
+        <!-- Windows环境正常显示监控数据 -->
+        <div v-else class="dashboard-grid">
           <!-- CPU 使用率图表 -->
           <el-card shadow="hover" class="chart-card">
             <div class="chart-header">
@@ -133,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
   Monitor,
@@ -207,6 +226,11 @@ const systemData = ref({
     status: '',
     size: ''
   }
+});
+
+// 判断是否为Linux环境
+const isLinuxEnvironment = computed(() => {
+  return systemData.value.system.platform === 'Linux';
 });
 
 // 初始化 ECharts
@@ -575,6 +599,30 @@ onUnmounted(() => {
 
 .module-content {
   min-height: 500px;
+}
+
+/* 环境提示信息 */
+.environment-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px 20px;
+}
+
+.environment-notice :deep(.el-result__title) {
+  font-size: 24px;
+  margin-top: 20px;
+}
+
+.environment-notice :deep(.el-result__subtitle) {
+  font-size: 16px;
+  margin-top: 12px;
+}
+
+.environment-notice :deep(.el-descriptions) {
+  max-width: 600px;
+  margin-top: 20px;
 }
 
 /* Grid 布局 */
