@@ -16,8 +16,27 @@
       </template>
 
       <div class="module-content">
-        <!-- 使用 Grid 布局 -->
-        <div class="dashboard-grid">
+        <!-- Linux环境提示信息 -->
+        <div v-if="isLinuxEnvironment" class="environment-notice">
+          <el-result
+            icon="info"
+            title="Windows系统监控"
+            sub-title="此功能仅在Windows开发环境可用"
+          >
+            <template #extra>
+              <el-descriptions :column="1" border>
+                <el-descriptions-item label="当前系统">{{ systemData.system.platform }}</el-descriptions-item>
+                <el-descriptions-item label="主机名">{{ systemData.system.hostname }}</el-descriptions-item>
+                <el-descriptions-item label="说明">
+                  当前服务器运行在 {{ systemData.system.platform }} 环境下。如需查看本服务器监控数据，请访问"云服务器监控"标签页。
+                </el-descriptions-item>
+              </el-descriptions>
+            </template>
+          </el-result>
+        </div>
+
+        <!-- Windows环境正常显示监控数据 -->
+        <div v-else class="dashboard-grid">
           <!-- CPU 使用率图表 -->
           <el-card shadow="hover" class="chart-card">
             <div class="chart-header">
@@ -133,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
   Monitor,
@@ -161,6 +180,12 @@ let cpuChartInstance = null;
 let memoryChartInstance = null;
 let diskChartInstance = null;
 let networkChartInstance = null;
+
+// ResizeObserver 实例
+let cpuResizeObserver = null;
+let memoryResizeObserver = null;
+let diskResizeObserver = null;
+let networkResizeObserver = null;
 
 // 历史数据（用于趋势图）
 const cpuHistory = ref([]);
@@ -209,6 +234,11 @@ const systemData = ref({
   }
 });
 
+// 判断是否为Linux环境
+const isLinuxEnvironment = computed(() => {
+  return systemData.value.system.platform === 'Linux';
+});
+
 // 初始化 ECharts
 const initCharts = () => {
   // CPU 图表
@@ -220,9 +250,10 @@ const initCharts = () => {
         formatter: '{b}: {c}%'
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -256,6 +287,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    cpuResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          cpuChartInstance?.resize();
+        }
+      }
+    });
+    cpuResizeObserver.observe(cpuChart.value);
   }
 
   // 内存图表
@@ -267,9 +308,10 @@ const initCharts = () => {
         formatter: '{b}: {c}%'
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -303,6 +345,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    memoryResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          memoryChartInstance?.resize();
+        }
+      }
+    });
+    memoryResizeObserver.observe(memoryChart.value);
   }
 
   // 磁盘图表（饼图）
@@ -333,6 +385,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    diskResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          diskChartInstance?.resize();
+        }
+      }
+    });
+    diskResizeObserver.observe(diskChart.value);
   }
 
   // 网络流量图表
@@ -346,9 +408,10 @@ const initCharts = () => {
         data: ['发送', '接收']
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -389,6 +452,16 @@ const initCharts = () => {
         }
       ]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    networkResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          networkChartInstance?.resize();
+        }
+      }
+    });
+    networkResizeObserver.observe(networkChart.value);
   }
 };
 
@@ -504,19 +577,15 @@ const connectWebSocket = () => {
   wsManager.connect();
 };
 
-// 窗口大小改变时调整图表
-const handleResize = () => {
-  cpuChartInstance?.resize();
-  memoryChartInstance?.resize();
-  diskChartInstance?.resize();
-  networkChartInstance?.resize();
-};
-
 onMounted(() => {
   nextTick(() => {
-    initCharts();
+    // 只在非Linux环境下初始化图表
+    if (!isLinuxEnvironment.value) {
+      initCharts();
+    }
+
+    // WebSocket连接（Windows和Linux都需要）
     connectWebSocket();
-    window.addEventListener('resize', handleResize);
   });
 });
 
@@ -524,14 +593,17 @@ onUnmounted(() => {
   // 关闭 WebSocket
   wsManager?.close();
 
+  // 断开 ResizeObserver 监听
+  cpuResizeObserver?.disconnect();
+  memoryResizeObserver?.disconnect();
+  diskResizeObserver?.disconnect();
+  networkResizeObserver?.disconnect();
+
   // 销毁图表
   cpuChartInstance?.dispose();
   memoryChartInstance?.dispose();
   diskChartInstance?.dispose();
   networkChartInstance?.dispose();
-
-  // 移除事件监听
-  window.removeEventListener('resize', handleResize);
 });
 </script>
 
@@ -575,6 +647,30 @@ onUnmounted(() => {
 
 .module-content {
   min-height: 500px;
+}
+
+/* 环境提示信息 */
+.environment-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px 20px;
+}
+
+.environment-notice :deep(.el-result__title) {
+  font-size: 24px;
+  margin-top: 20px;
+}
+
+.environment-notice :deep(.el-result__subtitle) {
+  font-size: 16px;
+  margin-top: 12px;
+}
+
+.environment-notice :deep(.el-descriptions) {
+  max-width: 600px;
+  margin-top: 20px;
 }
 
 /* Grid 布局 */
