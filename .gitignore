@@ -279,4 +279,4 @@ wandb/
 !docs/*.pdf  # 允许docs目录下的PDF文档
 #格式化文件的，不用提交
 code_text.py
-
+bug记录.md

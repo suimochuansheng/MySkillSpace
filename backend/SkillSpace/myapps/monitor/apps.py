@@ -48,19 +48,62 @@ class MonitorConfig(AppConfig):
 
                 # 尝试加载配置文件
                 config_loader = get_config_loader()
-                config_loader.load()
+                try:
+                    config_loader.load()
+                    logger.info("云服务器远程监控功能已启动（支持多服务器监控）")
+                except FileNotFoundError:
+                    # 没有配置文件时，在Linux环境下自动创建本机监控配置
+                    if current_os == "Linux":
+                        logger.info("未找到云服务器配置文件，自动创建本机监控配置")
+                        # 手动设置一个本机配置
+                        import socket
+
+                        hostname = socket.gethostname()
+                        config_loader.config_data = {
+                            "version": "1.0",
+                            "global": {
+                                "collect_interval": 1,
+                                "ssh_timeout": 10,
+                                "auto_reconnect": True,
+                                "max_reconnect_attempts": 3,
+                            },
+                            "servers": [
+                                {
+                                    "name": "示例生产服务器",
+                                    "enabled": True,
+                                    "tags": ["production", "linux"],
+                                    "connection": {
+                                        "host": "127.0.0.1",  # 本机
+                                        "port": 22,
+                                        "username": "root",
+                                        "auth_type": "password",
+                                        "password": "",  # 本机不需要SSH
+                                    },
+                                    "monitoring": {
+                                        "services": [],
+                                        "enable_docker": True,
+                                        "disk_partitions": [],
+                                        "network_interfaces": [],
+                                    },
+                                }
+                            ],
+                        }
+                        logger.info(f"本机监控配置已创建: {hostname}")
+                    else:
+                        logger.info(
+                            "未找到云服务器配置文件 (cloud_servers.yaml)，跳过远程监控功能。"
+                            "当前系统将只监控本地服务器。"
+                        )
+                        raise  # Windows环境下没有配置文件就退出
 
                 # 启动云监控任务
                 cloud_task = get_cloud_monitor_task()
                 cloud_task.start()
-
-                logger.info("云服务器远程监控功能已启动（支持多服务器监控）")
+                logger.info("云监控任务已启动")
 
             except FileNotFoundError:
-                logger.info(
-                    "未找到云服务器配置文件 (cloud_servers.yaml)，跳过远程监控功能。"
-                    "当前系统将只监控本地服务器。"
-                )
+                # Windows环境下没有配置文件的情况
+                pass
             except Exception as e:
                 logger.error(f"启动云服务器远程监控失败: {e}")
                 logger.info("本地监控功能仍正常运行")
