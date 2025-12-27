@@ -280,3 +280,4 @@ wandb/
 #格式化文件的，不用提交
 code_text.py
 bug记录.md
+docker-compose.prod.yml

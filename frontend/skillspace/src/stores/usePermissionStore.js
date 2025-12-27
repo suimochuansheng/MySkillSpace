@@ -12,22 +12,30 @@ export const usePermissionStore = defineStore('permission', () => {
   // ==========================================
   // 状态定义
   // ==========================================
-  
+
   // 用户菜单（树形结构）
   const menuList = ref([])
-  
+
   // 用户权限标识数组，如 ["system:user:list", "system:user:delete"]
   const permissions = ref([])
-  
-  // 用户基本信息
-  const user = ref(null)
-  
+
+  // 用户基本信息（从 localStorage 恢复）
+  const user = ref((() => {
+    try {
+      const savedUser = localStorage.getItem('user')
+      return savedUser ? JSON.parse(savedUser) : null
+    } catch (error) {
+      console.error('[Permission Store] 恢复用户信息失败:', error)
+      return null
+    }
+  })())
+
   // 用户角色
   const roles = ref([])
-  
+
   // 加载状态
   const loading = ref(false)
-  
+
   // 权限初始化标志（防止重复初始化）
   const initialized = ref(false)
 
@@ -76,6 +84,8 @@ export const usePermissionStore = defineStore('permission', () => {
       // 处理用户信息
       if (userRes) {
         user.value = userRes
+        // 保存到 localStorage
+        localStorage.setItem('user', JSON.stringify(userRes))
         if (userRes.role_ids) {
           roles.value = userRes.role_ids
         }
@@ -185,6 +195,12 @@ export const usePermissionStore = defineStore('permission', () => {
    */
   const setUser = (userData) => {
     user.value = userData
+    // 同步保存到 localStorage
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData))
+    } else {
+      localStorage.removeItem('user')
+    }
   }
 
   return {

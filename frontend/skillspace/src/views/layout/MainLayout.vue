@@ -9,7 +9,7 @@
             <el-dropdown @command="handleUserCommand">
               <span class="user-avatar-wrapper">
                 <el-avatar :size="40" :src="currentAvatar" />
-                <span class="username">{{ currentUser.username || currentUser.email }}</span>
+                <span class="username">{{ currentUser?.username || currentUser?.email || '用户' }}</span>
               </span>
               <template #dropdown>
                 <el-dropdown-menu>

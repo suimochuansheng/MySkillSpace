@@ -217,55 +217,64 @@ class CloudMonitorTask:
             # Docker容器采集需要单独处理
             if monitoring.get("enable_docker", False):
                 try:
-                    # 本地Docker采集需要通过命令行
-                    import subprocess
+                    # 本地Docker采集使用Docker SDK（不需要docker CLI）
+                    import docker
 
-                    result = subprocess.run(
-                        [
-                            "docker",
-                            "ps",
-                            "-a",
-                            "--format",
-                            "{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.CreatedAt}}",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
+                    # 连接到本地Docker守护进程（通过socket）
+                    client = docker.from_env()
 
-                    if result.returncode == 0:
-                        containers = []
-                        for line in result.stdout.strip().split("\n"):
-                            if not line:
-                                continue
-                            parts = line.split("|")
-                            if len(parts) >= 4:
-                                status_text = parts[2].lower()
-                                is_running = "up" in status_text
+                    # 获取所有容器（包括停止的）
+                    containers_list = client.containers.list(all=True)
 
-                                containers.append(
-                                    {
-                                        "container_id": parts[0],
-                                        "name": parts[1],
-                                        "status": (
-                                            "running" if is_running else "stopped"
-                                        ),
-                                        "status_detail": parts[2],
-                                        "image": parts[3],
-                                        "created": parts[4] if len(parts) > 4 else "",
-                                    }
+                    containers = []
+                    for container in containers_list:
+                        # 获取容器状态
+                        status = container.status  # running, exited, paused, etc.
+                        is_running = status == "running"
+
+                        # 获取创建时间
+                        created_time = container.attrs.get("Created", "")
+                        if created_time:
+                            # 转换ISO时间格式为可读格式
+                            try:
+                                dt = datetime.fromisoformat(
+                                    created_time.replace("Z", "+00:00")
                                 )
-                        data["containers"] = containers
+                                created = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            except Exception:
+                                created = created_time[:19]  # 截取前19个字符
+                        else:
+                            created = ""
 
-                        # ===== 调试输出 4: Docker容器采集结果 =====
-                        print(f"[调试] Docker容器采集完成: {len(containers)}个容器")
-                        for i, c in enumerate(containers[:3], 1):  # 只打印前3个
-                            print(f"[调试]   容器{i}: {c['name']} - {c['status']}")
-                        # ===== 调试输出结束 =====
+                        # 获取镜像名称
+                        image_name = (
+                            container.image.tags[0]
+                            if container.image.tags
+                            else container.image.short_id
+                        )
 
-                    else:
-                        logger.warning(f"Docker命令执行失败: {result.stderr}")
-                        data["containers"] = []
+                        containers.append(
+                            {
+                                "container_id": container.short_id,  # 短ID（12位）
+                                "name": container.name,
+                                "status": "running" if is_running else "stopped",
+                                "status_detail": container.status,
+                                "image": image_name,
+                                "created": created,
+                            }
+                        )
+
+                    data["containers"] = containers
+
+                    # 关闭客户端连接
+                    client.close()
+
+                    # ===== 调试输出 4: Docker容器采集结果 =====
+                    print(f"[调试] Docker容器采集完成: {len(containers)}个容器")
+                    for i, c in enumerate(containers[:3], 1):  # 只打印前3个
+                        print(f"[调试]   容器{i}: {c['name']} - {c['status']}")
+                    # ===== 调试输出结束 =====
+
                 except Exception as e:
                     logger.error(f"本地采集Docker容器失败: {e}")
                     data["containers"] = []
