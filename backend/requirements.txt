@@ -89,6 +89,7 @@ humanize==4.14.0
 tqdm==4.67.1
 wcwidth==0.2.14
 paramiko==3.5.0  # SSH客户端库（用于云服务器远程监控）
+docker==7.1.0  # Docker SDK for Python（用于容器监控）
 
 # ==================== 模板和界面 ====================
 Jinja2==3.1.4

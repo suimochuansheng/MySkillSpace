@@ -7,6 +7,8 @@ import json
 import time
 from functools import wraps
 
+import requests
+
 # ==========================================
 # 工具函数：获取请求信息
 # ==========================================
@@ -69,6 +71,66 @@ def parse_user_agent(user_agent_string):
         device = "Desktop"
 
     return {"browser": browser, "os": os, "device": device}
+
+
+def get_ip_location(ip_address):
+    """
+    根据IP地址查询地理位置
+
+    Args:
+        ip_address: IP地址（支持IPv4和IPv6）
+
+    Returns:
+        地理位置字符串，如 "中国 广东省 深圳市" 或 "内网IP"
+    """
+    # 内网IP不查询
+    if not ip_address or ip_address in ["127.0.0.1", "localhost", "::1"]:
+        return "本地"
+
+    # 内网IP段判断
+    if ip_address.startswith(("10.", "172.", "192.168.")):
+        return "内网IP"
+
+    try:
+        # 使用 ip-api.com 免费API（支持中文）
+        # 免费限制：每分钟45次请求
+        response = requests.get(
+            f"http://ip-api.com/json/{ip_address}",
+            params={"lang": "zh-CN"},  # 返回中文地理位置
+            timeout=3,  # 3秒超时
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # API返回格式：
+            # {
+            #   "status": "success",
+            #   "country": "中国",
+            #   "regionName": "广东省",
+            #   "city": "深圳市",
+            #   ...
+            # }
+
+            if data.get("status") == "success":
+                country = data.get("country", "")
+                region = data.get("regionName", "")
+                city = data.get("city", "")
+
+                # 组合地理位置
+                parts = [p for p in [country, region, city] if p]
+                return " ".join(parts) if parts else "未知"
+
+        # 如果失败，返回IP地址
+        return f"未知({ip_address})"
+
+    except requests.exceptions.Timeout:
+        # 超时返回IP
+        return f"查询超时({ip_address})"
+    except Exception as e:
+        # 查询失败，返回IP地址
+        print(f"IP定位查询失败: {e}")
+        return f"未知({ip_address})"
 
 
 def get_request_params(request):
@@ -227,10 +289,13 @@ def record_login_log(request, username, status, msg=""):
         user_agent_string = request.META.get("HTTP_USER_AGENT", "")
         ua_info = parse_user_agent(user_agent_string)
 
+        # 查询IP地理位置
+        location = get_ip_location(ip)
+
         LoginLog.objects.create(
             username=username,
             ip_address=ip,
-            login_location="",  # 可以集成IP定位服务
+            login_location=location,  # 填充地理位置
             browser=ua_info["browser"],
             os=ua_info["os"],
             device=ua_info["device"],
