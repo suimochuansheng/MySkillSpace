@@ -290,39 +290,64 @@ class LocalLinuxCollector:
 
     def collect_database_info(self) -> Dict:
         """
-        采集数据库连接信息
+        采集数据库连接信息（兼容MySQL和PostgreSQL）
 
         Returns:
             数据库信息字典
         """
         try:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT version()")
-                db_version = cursor.fetchone()[0] if cursor.rowcount > 0 else "Unknown"
+            db_engine = connection.settings_dict.get("ENGINE", "")
+            database_name = connection.settings_dict["NAME"]
 
-                cursor.execute(
+            with connection.cursor() as cursor:
+                # 获取数据库版本
+                if "mysql" in db_engine.lower():
+                    cursor.execute("SELECT VERSION()")
+                    db_version = cursor.fetchone()[0]
+
+                    # MySQL获取数据库大小
+                    cursor.execute(
+                        """
+                        SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
+                        FROM information_schema.TABLES
+                        WHERE table_schema = %s
+                    """,
+                        [database_name],
+                    )
+                    size_result = cursor.fetchone()
+                    db_size = f"{size_result[0]} MB" if size_result[0] else "Unknown"
+
+                elif (
+                    "postgresql" in db_engine.lower() or "psycopg" in db_engine.lower()
+                ):
+                    cursor.execute("SELECT version()")
+                    db_version = cursor.fetchone()[0]
+
+                    # PostgreSQL获取数据库大小
+                    cursor.execute(
+                        """
+                        SELECT pg_size_pretty(pg_database_size(current_database()))
                     """
-                    SELECT pg_database.datname,
-                           pg_size_pretty(pg_database_size(pg_database.datname)) AS size
-                    FROM pg_database
-                    WHERE datname = current_database()
-                """
-                )
-                db_size_result = cursor.fetchone()
-                db_size = db_size_result[1] if db_size_result else "Unknown"
+                    )
+                    size_result = cursor.fetchone()
+                    db_size = size_result[0] if size_result else "Unknown"
+
+                else:
+                    db_version = "Unknown"
+                    db_size = "Unknown"
 
                 return {
                     "version": db_version,
-                    "database_name": connection.settings_dict["NAME"],
+                    "database_name": database_name,
                     "size": db_size,
                     "status": "connected",
                 }
         except Exception as e:
             logger.error(f"获取数据库信息失败: {e}")
             return {
-                "database_name": "Unknown",
+                "database_name": connection.settings_dict.get("NAME", "Unknown"),
                 "status": "error",
-                "message": str(e),
+                "size": "Unknown",
             }
 
 
