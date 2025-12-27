@@ -45,8 +45,18 @@ class CloudServerConfigLoader:
             FileNotFoundError: 配置文件不存在
             ValueError: 配置文件格式错误
         """
+        # 如果已经有内存配置且不强制重载，直接返回（支持手动设置的配置）
+        if not force_reload and self.config_data is not None:
+            logger.debug("使用已加载的配置")
+            return self.config_data
+
         # 检查文件是否存在
         if not self.config_file.exists():
+            # 如果有内存配置，即使文件不存在也返回内存配置
+            if self.config_data is not None:
+                logger.debug("配置文件不存在，但使用内存配置")
+                return self.config_data
+
             raise FileNotFoundError(
                 f"配置文件不存在: {self.config_file}\n"
                 f"请复制 cloud_servers.example.yaml 为 cloud_servers.yaml 并填写配置"
