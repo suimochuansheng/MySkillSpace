@@ -277,3 +277,6 @@ wandb/
 # 个人文件（不要提交到仓库）
 *.pdf
 !docs/*.pdf  # 允许docs目录下的PDF文档
+#格式化文件的，不用提交
+code_text.py
+
