@@ -244,9 +244,10 @@ const initCharts = () => {
         formatter: '{b}: {c}%'
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -291,9 +292,10 @@ const initCharts = () => {
         formatter: '{b}: {c}%'
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -370,9 +372,10 @@ const initCharts = () => {
         data: ['发送', '接收']
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
+        left: '10%',
+        right: '5%',
+        bottom: '10%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
