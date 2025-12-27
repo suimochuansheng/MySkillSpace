@@ -181,6 +181,12 @@ let memoryChartInstance = null;
 let diskChartInstance = null;
 let networkChartInstance = null;
 
+// ResizeObserver 实例
+let cpuResizeObserver = null;
+let memoryResizeObserver = null;
+let diskResizeObserver = null;
+let networkResizeObserver = null;
+
 // 历史数据（用于趋势图）
 const cpuHistory = ref([]);
 const memoryHistory = ref([]);
@@ -281,6 +287,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    cpuResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          cpuChartInstance?.resize();
+        }
+      }
+    });
+    cpuResizeObserver.observe(cpuChart.value);
   }
 
   // 内存图表
@@ -329,6 +345,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    memoryResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          memoryChartInstance?.resize();
+        }
+      }
+    });
+    memoryResizeObserver.observe(memoryChart.value);
   }
 
   // 磁盘图表（饼图）
@@ -359,6 +385,16 @@ const initCharts = () => {
         }
       }]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    diskResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          diskChartInstance?.resize();
+        }
+      }
+    });
+    diskResizeObserver.observe(diskChart.value);
   }
 
   // 网络流量图表
@@ -416,6 +452,16 @@ const initCharts = () => {
         }
       ]
     });
+
+    // 使用 ResizeObserver 监听容器尺寸变化
+    networkResizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          networkChartInstance?.resize();
+        }
+      }
+    });
+    networkResizeObserver.observe(networkChart.value);
   }
 };
 
@@ -531,19 +577,15 @@ const connectWebSocket = () => {
   wsManager.connect();
 };
 
-// 窗口大小改变时调整图表
-const handleResize = () => {
-  cpuChartInstance?.resize();
-  memoryChartInstance?.resize();
-  diskChartInstance?.resize();
-  networkChartInstance?.resize();
-};
-
 onMounted(() => {
   nextTick(() => {
-    initCharts();
+    // 只在非Linux环境下初始化图表
+    if (!isLinuxEnvironment.value) {
+      initCharts();
+    }
+
+    // WebSocket连接（Windows和Linux都需要）
     connectWebSocket();
-    window.addEventListener('resize', handleResize);
   });
 });
 
@@ -551,14 +593,17 @@ onUnmounted(() => {
   // 关闭 WebSocket
   wsManager?.close();
 
+  // 断开 ResizeObserver 监听
+  cpuResizeObserver?.disconnect();
+  memoryResizeObserver?.disconnect();
+  diskResizeObserver?.disconnect();
+  networkResizeObserver?.disconnect();
+
   // 销毁图表
   cpuChartInstance?.dispose();
   memoryChartInstance?.dispose();
   diskChartInstance?.dispose();
   networkChartInstance?.dispose();
-
-  // 移除事件监听
-  window.removeEventListener('resize', handleResize);
 });
 </script>
 
