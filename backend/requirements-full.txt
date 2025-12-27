@@ -66,6 +66,7 @@ pdfplumber==0.11.8
 # peft==0.18.0  # 参数高效微调（API 不需要）
 
 pillow==11.0.0
+paramiko==3.5.0  # SSH客户端库（云服务器远程监控）
 prometheus_client==0.23.1
 prompt_toolkit==3.0.52
 propcache==0.4.1
