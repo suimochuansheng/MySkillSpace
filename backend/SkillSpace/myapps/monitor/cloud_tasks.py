@@ -17,7 +17,9 @@ from channels.layers import get_channel_layer
 from .cloud_collectors import CloudServerCollector
 from .config.config_loader import get_config_loader
 from .local_collectors import get_local_collector
-from .utils.ssh_client import SSHClientManager
+
+# SSHClientManager延迟导入（仅在需要SSH连接时导入，避免paramiko缺失导致模块加载失败）
+# from .utils.ssh_client import SSHClientManager
 
 logger = logging.getLogger(__name__)
 
@@ -252,9 +254,7 @@ class CloudMonitorTask:
 
         return data
 
-    def _get_ssh_connection(
-        self, server_name: str, connection: Dict
-    ) -> SSHClientManager:
+    def _get_ssh_connection(self, server_name: str, connection: Dict):
         """
         获取或创建SSH连接（支持连接池）
 
@@ -265,6 +265,15 @@ class CloudMonitorTask:
         Returns:
             SSH客户端管理器实例
         """
+        # 延迟导入SSH客户端（避免paramiko缺失导致模块加载失败）
+        try:
+            from .utils.ssh_client import SSHClientManager
+        except ImportError as e:
+            logger.error(f"SSH客户端模块导入失败（可能缺少paramiko）: {e}")
+            raise ImportError(
+                "SSH远程监控需要安装paramiko库。请运行: pip install paramiko"
+            ) from e
+
         # 检查是否已有连接
         if server_name in self.ssh_connections:
             ssh = self.ssh_connections[server_name]
