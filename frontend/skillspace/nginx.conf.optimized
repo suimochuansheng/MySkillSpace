@@ -1,0 +1,373 @@
+# ==================== 上游服务器配置 ====================
+# 定义后端服务器组（支持负载均衡和健康检查）
+upstream backend_servers {
+    # 后端服务器
+    server backend:8000 max_fails=3 fail_timeout=30s;
+
+    # 如果有多个后端实例，可以添加更多服务器实现负载均衡
+    # server backend2:8000 max_fails=3 fail_timeout=30s;
+    # server backend3:8000 max_fails=3 fail_timeout=30s;
+
+    # 负载均衡策略（默认是轮询round-robin）
+    # 其他可选策略：
+    # - least_conn;  # 最少连接数
+    # - ip_hash;     # 按IP哈希（保持会话）
+    # - hash $request_uri;  # 按URL哈希
+
+    # 保持连接（提升性能）
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
+# ==================== 反向代理缓存配置 ====================
+# 定义缓存路径和参数
+proxy_cache_path /var/cache/nginx/api
+    levels=1:2
+    keys_zone=api_cache:10m
+    max_size=100m
+    inactive=60m
+    use_temp_path=off;
+
+proxy_cache_path /var/cache/nginx/static
+    levels=1:2
+    keys_zone=static_cache:10m
+    max_size=500m
+    inactive=7d
+    use_temp_path=off;
+
+# ==================== 限流配置区 ====================
+# 登录接口限流（防止暴力破解）
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=2r/s;
+
+# AI接口限流（防止token盗刷）
+limit_req_zone $binary_remote_addr zone=ai_limit:10m rate=1r/s;
+
+# 普通API限流（防止CC攻击）
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=20r/s;
+
+# WebSocket连接数限制
+limit_conn_zone $binary_remote_addr zone=ws_conn_limit:10m;
+
+# 全局连接数限制
+limit_conn_zone $binary_remote_addr zone=global_conn_limit:10m;
+
+# 限流日志配置
+limit_req_log_level warn;
+limit_conn_log_level warn;
+limit_req_status 429;
+limit_conn_status 429;
+
+
+server {
+    listen 80;
+    server_name localhost;
+
+    # 全局连接数限制
+    limit_conn global_conn_limit 50;
+
+    # 前端静态文件根目录
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # ==================== 日志配置 ====================
+    # 访问日志（包含代理信息）
+    log_format proxy_log '$remote_addr - $remote_user [$time_local] '
+                         '"$request" $status $body_bytes_sent '
+                         '"$http_referer" "$http_user_agent" '
+                         'upstream: $upstream_addr '
+                         'upstream_status: $upstream_status '
+                         'request_time: $request_time '
+                         'upstream_response_time: $upstream_response_time';
+
+    access_log /var/log/nginx/access.log proxy_log;
+    error_log /var/log/nginx/error.log warn;
+
+    # ==================== Gzip 压缩配置 ====================
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml text/javascript
+               application/x-javascript application/xml+rss
+               application/json application/javascript
+               application/vnd.api+json;
+    gzip_proxied any;
+    gzip_disable "msie6";
+
+    # ==================== 前端路由配置 ====================
+    # Vue Router 的 History 模式支持
+    location / {
+        try_files $uri $uri/ /index.html;
+
+        # 前端静态文件缓存
+        expires 1h;
+        add_header Cache-Control "public, must-revalidate";
+    }
+
+    # ==================== 登录接口代理（严格限流） ====================
+    location ~ ^/api/auth/(login|register)/ {
+        # 限流配置
+        limit_req zone=login_limit burst=5;
+        add_header X-RateLimit-Limit "2 per second" always;
+
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # 禁用缓存（登录请求不应缓存）
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+        add_header X-Cache-Status "BYPASS" always;
+    }
+
+    # ==================== AI接口代理（最严格限流 + 超时优化） ====================
+    location ~ ^/api/ai/(chat|qwen|message)/ {
+        # 限流配置
+        limit_req zone=ai_limit burst=2 nodelay;
+        add_header X-RateLimit-Limit "1 per second" always;
+
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # AI接口超时设置（更长，因为模型响应慢）
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 300s;  # 5分钟（大模型可能需要很长时间）
+
+        # 禁用缓存（AI响应不应缓存）
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+
+        # 禁用缓冲（实现流式响应）
+        proxy_buffering off;
+        proxy_request_buffering off;
+
+        add_header X-Cache-Status "BYPASS" always;
+    }
+
+    # ==================== 普通API代理（宽松限流 + 智能缓存） ====================
+    location /api/ {
+        # 限流配置
+        limit_req zone=api_limit burst=50;
+        add_header X-RateLimit-Limit "20 per second" always;
+
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # HTTP版本（支持keepalive）
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # ==================== 缓存配置 ====================
+        # 对GET请求启用缓存（POST/PUT/DELETE不缓存）
+        proxy_cache api_cache;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+
+        # 缓存有效期
+        proxy_cache_valid 200 304 5m;   # 成功响应缓存5分钟
+        proxy_cache_valid 404 1m;       # 404缓存1分钟
+        proxy_cache_valid any 0;        # 其他不缓存
+
+        # 缓存条件
+        proxy_cache_bypass $http_cache_control;  # 如果请求头有Cache-Control，绕过缓存
+        proxy_no_cache $http_pragma $http_authorization;  # 有认证信息不缓存
+
+        # 添加缓存状态头（便于调试）
+        add_header X-Cache-Status $upstream_cache_status always;
+
+        # 缓存锁（防止缓存击穿）
+        proxy_cache_lock on;
+        proxy_cache_lock_timeout 5s;
+
+        # 使用过期缓存（后端故障时）
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        proxy_cache_background_update on;
+    }
+
+    # ==================== WebSocket 代理（长连接优化） ====================
+    location /ws/ {
+        # 连接数限制
+        limit_conn ws_conn_limit 10;
+        add_header X-Conn-Limit "10 concurrent connections" always;
+
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # WebSocket 必须的配置
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket 超时设置（保持长连接）
+        proxy_connect_timeout 7200s;  # 2小时
+        proxy_send_timeout 7200s;
+        proxy_read_timeout 7200s;
+
+        # 禁用缓冲（实时通信）
+        proxy_buffering off;
+
+        # 禁用缓存
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+    }
+
+    # ==================== Django 静态文件代理（强缓存） ====================
+    location /static/ {
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # HTTP版本
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # 缓存配置（静态文件长期缓存）
+        proxy_cache static_cache;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        proxy_cache_valid 200 7d;  # 成功响应缓存7天
+        proxy_cache_valid 404 1h;  # 404缓存1小时
+
+        # 缓存状态头
+        add_header X-Cache-Status $upstream_cache_status always;
+
+        # 浏览器缓存（1年）
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+
+        # 使用过期缓存
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+    }
+
+    # ==================== Django 媒体文件代理（中等缓存） ====================
+    location /media/ {
+        # 反向代理到后端
+        proxy_pass http://backend_servers;
+
+        # 代理请求头
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # HTTP版本
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # 缓存配置（用户上传的文件，中等缓存）
+        proxy_cache static_cache;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        proxy_cache_valid 200 1d;  # 成功响应缓存1天
+        proxy_cache_valid 404 10m; # 404缓存10分钟
+
+        # 缓存状态头
+        add_header X-Cache-Status $upstream_cache_status always;
+
+        # 浏览器缓存（7天）
+        expires 7d;
+        add_header Cache-Control "public";
+
+        # 使用过期缓存
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+    }
+
+    # ==================== 健康检查端点（可选） ====================
+    location /health {
+        # 直接返回200，用于监控系统检查
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # ==================== 安全配置 ====================
+    # 禁止访问隐藏文件（如 .git, .env）
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # 禁止访问敏感文件
+    location ~ \.(sql|bak|backup|log)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # ==================== 前端静态资源缓存优化 ====================
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        # 优先从本地文件系统读取
+        try_files $uri =404;
+
+        # 长期缓存
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+
+        # 访问日志优化
+        access_log off;
+        log_not_found off;
+    }
+
+    # ==================== 自定义错误页面 ====================
+    # 429限流错误
+    error_page 429 /429.html;
+    location = /429.html {
+        internal;
+        default_type application/json;
+        return 429 '{
+            "code": 429,
+            "message": "请求过于频繁，请稍后再试",
+            "retry_after": 1,
+            "error": "Too Many Requests"
+        }';
+    }
+
+    # 502/503/504后端错误
+    error_page 502 503 504 /50x.html;
+    location = /50x.html {
+        internal;
+        default_type application/json;
+        return 503 '{
+            "code": 503,
+            "message": "服务暂时不可用，请稍后重试",
+            "error": "Service Unavailable"
+        }';
+    }
+
+    # 404错误（返回前端路由处理）
+    error_page 404 /index.html;
+}

@@ -12,3 +12,7 @@ class AuthSystemConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "auth_system"
     verbose_name = "用户认证系统"
+
+    def ready(self):
+        """应用启动时注册信号处理器"""
+        import auth_system.signals  # noqa: F401
