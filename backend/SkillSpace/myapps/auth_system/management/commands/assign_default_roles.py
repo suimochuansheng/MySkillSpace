@@ -28,8 +28,10 @@ class Command(BaseCommand):
             self.stdout.write("   请先在Admin后台创建至少一个角色")
             return
 
-        # 2. 找到默认角色
-        default_role = Role.objects.filter(code="common").first()
+        # 2. 找到默认角色（优先级：normal > common > 第一个角色）
+        default_role = Role.objects.filter(code="normal").first()
+        if not default_role:
+            default_role = Role.objects.filter(code="common").first()
         if not default_role:
             default_role = roles.first()
 
