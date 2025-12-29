@@ -3,8 +3,8 @@
 Django管理命令：为所有没有角色的用户分配默认角色
 使用方法：python manage.py assign_default_roles
 """
+from auth_system.models import Role, User
 from django.core.management.base import BaseCommand
-from myapps.auth_system.models import Role, User
 
 
 class Command(BaseCommand):
