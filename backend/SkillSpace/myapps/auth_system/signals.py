@@ -23,10 +23,14 @@ def assign_default_role(sender, instance, created, **kwargs):
         # 检查用户是否已经有角色
         if instance.roles.count() == 0:
             try:
-                # 尝试获取"普通用户"角色
-                default_role = Role.objects.filter(code="common").first()
+                # 尝试获取"普通用户"角色（优先级：normal > common > 第一个角色）
+                default_role = Role.objects.filter(code="normal").first()
 
-                # 如果没有common角色，使用第一个可用角色
+                # 如果没有normal角色，尝试common
+                if not default_role:
+                    default_role = Role.objects.filter(code="common").first()
+
+                # 如果都没有，使用第一个可用角色
                 if not default_role:
                     default_role = Role.objects.first()
 
