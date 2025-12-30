@@ -182,6 +182,18 @@ const mainLayoutRoute = {
         icon: 'Document',
         permission: 'monitor:loginlog:list'
       }
+    },
+
+    // 封禁IP管理
+    {
+      path: 'sys/banned-ip',
+      name: 'BannedIPManagement',
+      component: () => import('@/views/sys/banned-ip/index.vue'),
+      meta: {
+        title: '封禁IP管理',
+        icon: 'Lock',
+        permission: 'monitor:banned:list'
+      }
     }
   ]
 }
