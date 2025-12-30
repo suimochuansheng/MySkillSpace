@@ -11,9 +11,40 @@ class MonitorConfig(AppConfig):
         import logging
         import os
         import platform
+        import sys
 
         logger = logging.getLogger(__name__)
 
+        # ========== 命令检测：跳过不需要监控的管理命令 ==========
+        # 在以下命令下不启动监控任务：
+        # - shell: python manage.py shell
+        # - migrate: python manage.py migrate
+        # - makemigrations: python manage.py makemigrations
+        # - test: python manage.py test
+        # - check: python manage.py check
+        # - collectstatic: python manage.py collectstatic
+        SKIP_COMMANDS = [
+            "shell",
+            "migrate",
+            "makemigrations",
+            "test",
+            "check",
+            "collectstatic",
+            "createsuperuser",
+            "dbshell",
+            "showmigrations",
+            "sqlmigrate",
+            "inspectdb",
+        ]
+
+        # 检查命令行参数
+        if len(sys.argv) > 1:
+            command = sys.argv[1]
+            if command in SKIP_COMMANDS:
+                logger.info(f"检测到管理命令 '{command}'，跳过监控任务启动")
+                return  # 直接返回，不启动监控
+
+        # ========== 继续原有的监控启动逻辑 ==========
         # 检测是否在 worker 进程中运行（避免在主进程重复启动）
         # 开发环境：只在 RUN_MAIN=true 时启动
         # 生产环境：直接启动（Daphne/Gunicorn）
