@@ -55,6 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     roles = serializers.SerializerMethodField()
     role_ids = serializers.SerializerMethodField(read_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -62,6 +63,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "email",
             "username",
+            "password",  # 添加password字段（write_only）
             "avatar",
             "phonenumber",
             "date_joined",
@@ -72,6 +74,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_superuser",  # 添加超级管理员标识
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
+        extra_kwargs = {"password": {"write_only": True, "required": False}}
 
     def get_roles(self, obj):
         # 返回用户拥有的角色名称列表，如 "admin,common"
@@ -80,6 +83,33 @@ class UserSerializer(serializers.ModelSerializer):
     def get_role_ids(self, obj):
         # 返回角色ID列表，用于前端角色分配
         return [role.id for role in obj.roles.all()]
+
+    def create(self, validated_data):
+        """管理员创建用户时，正确处理密码hash"""
+        password = validated_data.pop("password", None)
+        user = User.objects.create(**validated_data)
+
+        # 如果提供了密码，进行hash
+        if password:
+            user.set_password(password)
+            user.save()
+
+        return user
+
+    def update(self, instance, validated_data):
+        """更新用户时，正确处理密码hash"""
+        password = validated_data.pop("password", None)
+
+        # 更新其他字段
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # 如果提供了密码，进行hash
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
