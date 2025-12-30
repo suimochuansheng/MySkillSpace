@@ -6,7 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .log_utils import record_login_log
+from .log_utils import record_fail2ban_log, record_login_log
 from .models import LoginLog, Menu, OperationLog, Role, User
 from .permissions import ActionPermission, permission_required
 from .serializers import (
@@ -91,9 +91,12 @@ class UserLoginView(APIView):
         # 验证失败记录日志
         if not serializer.is_valid():
             account = request.data.get("account", "未知账号")
+            # 记录到数据库（LoginLog表）
             record_login_log(
                 request, username=account, status="1", msg="账户或密码错误"
             )
+            # 记录到fail2ban日志文件（用于IP封禁）
+            record_fail2ban_log(request, account=account)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         serializer.is_valid(raise_exception=True)
@@ -477,3 +480,159 @@ class LoginLogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(status=status_param)
 
         return queryset.order_by("-login_time")
+
+
+# ==========================================
+# fail2ban封禁IP管理ViewSet
+# ==========================================
+
+
+class BannedIPViewSet(viewsets.ViewSet):
+    """
+    fail2ban封禁IP管理ViewSet
+    提供查看封禁列表和解封IP功能
+    """
+
+    permission_classes = [ActionPermission]
+
+    # 权限映射
+    permission_map = {
+        "list": "monitor:banned:list",  # 查看封禁列表
+        "unban": "monitor:banned:unban",  # 解封IP
+    }
+
+    def list(self, request):
+        """获取fail2ban封禁的IP列表"""
+        import subprocess
+        from datetime import datetime
+
+        try:
+            # 执行fail2ban-client status命令
+            result = subprocess.run(
+                ["fail2ban-client", "status", "django-login"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode != 0:
+                # fail2ban未安装或django-login监狱未启用
+                return Response(
+                    {
+                        "code": 200,
+                        "message": "fail2ban未配置或未启用",
+                        "data": [],
+                        "total": 0,
+                    }
+                )
+
+            # 解析输出
+            output = result.stdout
+            banned_ips = []
+
+            # 提取Banned IP list行
+            for line in output.split("\n"):
+                if "Banned IP list:" in line:
+                    # 格式：`- Banned IP list:   1.2.3.4  5.6.7.8
+                    ip_part = line.split(":")[-1].strip()
+                    if ip_part:
+                        ips = ip_part.split()
+                        for ip in ips:
+                            banned_ips.append(
+                                {
+                                    "ip": ip,
+                                    "banned_at": datetime.now().strftime(
+                                        "%Y-%m-%d %H:%M:%S"
+                                    ),
+                                    "status": "banned",
+                                }
+                            )
+
+            # 获取总数
+            total_banned = len(banned_ips)
+
+            # 提取Currently banned数量
+            for line in output.split("\n"):
+                if "Currently banned:" in line:
+                    try:
+                        total_banned = int(line.split(":")[-1].strip())
+                    except ValueError:
+                        pass
+
+            return Response(
+                {
+                    "code": 200,
+                    "message": "查询成功",
+                    "data": banned_ips,
+                    "total": total_banned,
+                }
+            )
+
+        except FileNotFoundError:
+            # fail2ban-client命令不存在
+            return Response(
+                {
+                    "code": 200,
+                    "message": "fail2ban未安装",
+                    "data": [],
+                    "total": 0,
+                }
+            )
+        except subprocess.TimeoutExpired:
+            return Response(
+                {"code": 500, "message": "查询超时，请重试"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as e:
+            return Response(
+                {"code": 500, "message": f"查询失败: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=False, methods=["post"])
+    @permission_required("monitor:banned:unban")
+    def unban(self, request):
+        """解封指定IP"""
+        import subprocess
+
+        ip_address = request.data.get("ip")
+
+        if not ip_address:
+            return Response(
+                {"code": 400, "message": "请提供IP地址"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # 执行解封命令
+            result = subprocess.run(
+                ["fail2ban-client", "set", "django-login", "unbanip", ip_address],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode == 0:
+                return Response({"code": 200, "message": f"IP {ip_address} 已成功解封"})
+            else:
+                error_msg = result.stderr or result.stdout
+                return Response(
+                    {"code": 500, "message": f"解封失败: {error_msg}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        except FileNotFoundError:
+            return Response(
+                {"code": 500, "message": "fail2ban未安装"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except subprocess.TimeoutExpired:
+            return Response(
+                {"code": 500, "message": "解封超时，请重试"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as e:
+            return Response(
+                {"code": 500, "message": f"解封失败: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

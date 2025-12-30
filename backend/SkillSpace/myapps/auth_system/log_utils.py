@@ -4,6 +4,8 @@
 """
 
 import json
+import logging
+import os
 import time
 from functools import wraps
 
@@ -304,6 +306,53 @@ def record_login_log(request, username, status, msg=""):
         )
     except Exception as e:
         print(f"记录登录日志失败: {e}")
+
+
+def record_fail2ban_log(request, account):
+    """
+    记录登录失败日志到fail2ban专用日志文件
+    用于fail2ban监控和封禁恶意IP
+
+    Args:
+        request: Django request对象
+        account: 尝试登录的账号
+    """
+    try:
+        # 获取客户端IP
+        ip = get_client_ip(request)
+
+        # 配置fail2ban专用日志记录器
+        fail2ban_logger = logging.getLogger("fail2ban_login")
+
+        # 如果logger还没有handler，配置一个
+        if not fail2ban_logger.handlers:
+            # 日志文件路径（Docker容器内路径）
+            log_file = "/app/logs/login_fail.log"
+
+            # 创建目录（如果不存在）
+            log_dir = os.path.dirname(log_file)
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+
+            # 创建文件处理器
+            handler = logging.FileHandler(log_file, encoding="utf-8")
+
+            # 设置日志格式（fail2ban需要的格式）
+            formatter = logging.Formatter(
+                "%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+
+            # 添加处理器
+            fail2ban_logger.addHandler(handler)
+            fail2ban_logger.setLevel(logging.WARNING)
+
+        # 记录登录失败（fail2ban会匹配这个格式）
+        fail2ban_logger.warning(f"登录失败 - 账号: {account}, IP: {ip}")
+
+    except Exception as e:
+        # 记录失败不影响主流程
+        print(f"记录fail2ban日志失败: {e}")
 
 
 # ==========================================
