@@ -74,20 +74,17 @@
       <!-- 右侧：分析结果区域 -->
       <el-col :xs="24" :md="14" :lg="16">
         <div v-loading="loading" element-loading-text="AI 正在深度阅读您的简历..." class="result-wrapper">
-          
-          <!-- 空状态 -->
-          <el-empty v-if="!result && !loading" description="请在左侧完成数据录入，开始您的 AI 求职之旅" />
 
-          <!-- 分析报告 -->
-          <div v-if="result" class="report-content">
+          <!-- 分析报告 - 始终显示 -->
+          <div class="report-content">
             
             <!-- 头部评分卡 -->
             <el-card class="score-card" shadow="never">
               <div class="score-header">
                 <div class="score-circle">
-                  <el-progress 
-                    type="dashboard" 
-                    :percentage="result.score" 
+                  <el-progress
+                    type="dashboard"
+                    :percentage="result?.score || 0"
                     :color="scoreColor"
                     :width="120"
                     :stroke-width="10"
@@ -100,7 +97,8 @@
                 </div>
                 <div class="score-summary">
                   <h3>🤖 AI 综合评价</h3>
-                  <p>{{ result.summary }}</p>
+                  <p v-if="result">{{ result.summary }}</p>
+                  <p v-else class="placeholder-text">请上传简历并输入 JD，开始诊断后 AI 将为您生成综合评价...</p>
                 </div>
               </div>
             </el-card>
@@ -112,9 +110,17 @@
                   <template #header>
                     <span class="text-success"><el-icon><CircleCheckFilled /></el-icon> 核心亮点</span>
                   </template>
-                  <ul>
-                    <li v-for="(item, index) in (result.pros || [])" :key="index">{{ item }}</li>
+                  <ul v-if="result && result.pros && result.pros.length > 0">
+                    <li v-for="(item, index) in result.pros" :key="index">{{ item }}</li>
                   </ul>
+                  <div v-else class="placeholder-text">
+                    AI 将分析您的简历亮点，包括：
+                    <ul>
+                      <li>与岗位匹配的技能优势</li>
+                      <li>突出的项目经验</li>
+                      <li>相关的工作背景</li>
+                    </ul>
+                  </div>
                 </el-card>
               </el-col>
               <el-col :span="12">
@@ -122,9 +128,17 @@
                   <template #header>
                     <span class="text-danger"><el-icon><CircleCloseFilled /></el-icon> 潜在风险</span>
                   </template>
-                  <ul>
+                  <ul v-if="result && result.cons && result.cons.length > 0">
                     <li v-for="(item, index) in result.cons" :key="index">{{ item }}</li>
                   </ul>
+                  <div v-else class="placeholder-text">
+                    AI 将识别简历中的改进空间，例如：
+                    <ul>
+                      <li>技能缺口分析</li>
+                      <li>经验不足的领域</li>
+                      <li>表述可优化的部分</li>
+                    </ul>
+                  </div>
                 </el-card>
               </el-col>
             </el-row>
@@ -134,7 +148,16 @@
               <template #header>
                 <span>💡 改进建议与行动指南</span>
               </template>
-              <div class="suggestion-text" v-html="formattedSuggestions"></div>
+              <div v-if="result && result.suggestions" class="suggestion-text" v-html="formattedSuggestions"></div>
+              <div v-else class="placeholder-text">
+                <p>AI 将根据简历与 JD 的对比，为您提供针对性的改进建议：</p>
+                <ul>
+                  <li>📝 简历内容优化方向</li>
+                  <li>🎯 技能提升建议</li>
+                  <li>✨ 亮点包装技巧</li>
+                  <li>🔧 格式与排版改进</li>
+                </ul>
+              </div>
             </el-card>
 
           </div>
@@ -303,5 +326,28 @@ const handleSubmit = async () => {
   line-height: 1.8;
   color: #303133;
   white-space: pre-wrap;
+}
+
+/* 占位文本样式 */
+.placeholder-text {
+  color: #909399;
+  font-size: 14px;
+  line-height: 1.8;
+  padding: 20px 10px;
+}
+
+.placeholder-text p {
+  margin-bottom: 10px;
+  color: #606266;
+}
+
+.placeholder-text ul {
+  padding-left: 20px;
+  margin: 5px 0;
+}
+
+.placeholder-text li {
+  margin-bottom: 8px;
+  color: #909399;
 }
 </style>
