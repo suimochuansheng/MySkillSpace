@@ -20,7 +20,7 @@ django_asgi_app = get_asgi_application()
 from SkillSpace.myapps.ai_demo import routing as ai_routing
 from SkillSpace.myapps.monitor import routing as monitor_routing
 
-# ASGI 应用配置
+# ASGI 应用配置-协议路由
 application = ProtocolTypeRouter(
     {
         # HTTP 请求使用标准 Django ASGI

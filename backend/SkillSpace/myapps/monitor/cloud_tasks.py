@@ -131,18 +131,18 @@ class CloudMonitorTask:
                         group_name = f"cloud_monitor_{hashlib.md5(server_name.encode()).hexdigest()}"
 
                         # ===== 调试输出 6: WebSocket推送前 =====
-                        print(f"\n{'*'*60}")
-                        print("[调试] 准备推送数据到WebSocket")
-                        print(f"[调试] Group名称: {group_name}")
-                        print(f"[调试] 数据类型: {type(data)}")
-                        print(f"[调试] 数据大小: {len(str(data))} 字符")
-                        print(
-                            f"[调试] CPU: {data.get('cpu', {}).get('usage_percent')}%"
-                        )
-                        print(
-                            f"[调试] 内存: {data.get('memory', {}).get('usage_percent')}%"
-                        )
-                        print(f"{'*'*60}\n")
+                        # print(f"\n{'*'*60}")
+                        # print("[调试] 准备推送数据到WebSocket")
+                        # print(f"[调试] Group名称: {group_name}")
+                        # print(f"[调试] 数据类型: {type(data)}")
+                        # print(f"[调试] 数据大小: {len(str(data))} 字符")
+                        # print(
+                        #     f"[调试] CPU: {data.get('cpu', {}).get('usage_percent')}%"
+                        # )
+                        # print(
+                        #     f"[调试] 内存: {data.get('memory', {}).get('usage_percent')}%"
+                        # )
+                        # print(f"{'*'*60}\n")
                         # ===== 调试输出结束 =====
 
                         async_to_sync(self.channel_layer.group_send)(
@@ -151,7 +151,7 @@ class CloudMonitorTask:
                         )
 
                         # ===== 调试输出 7: WebSocket推送后 =====
-                        print(f"[调试] ✅ WebSocket推送成功: {server_name}\n")
+                        # print(f"[调试] ✅ WebSocket推送成功: {server_name}\n")
                         # ===== 调试输出结束 =====
 
                         logger.debug(f"数据采集并推送成功: {server_name}")
@@ -188,11 +188,11 @@ class CloudMonitorTask:
         is_local = self._is_localhost(host)
 
         # ===== 调试输出 1: 本机检测结果 =====
-        print(f"\n{'='*60}")
-        print(f"[调试] 服务器: {server_name}")
-        print(f"[调试] 配置IP: {host}")
-        print(f"[调试] 是否本机: {is_local}")
-        print(f"{'='*60}\n")
+        # print(f"\n{'='*60}")
+        # print(f"[调试] 服务器: {server_name}")
+        # print(f"[调试] 配置IP: {host}")
+        # print(f"[调试] 是否本机: {is_local}")
+        # print(f"{'='*60}\n")
         # ===== 调试输出结束 =====
 
         if is_local:
@@ -200,18 +200,18 @@ class CloudMonitorTask:
             logger.info(f"检测到本机监控，使用本地采集器: {server_name}")
 
             # ===== 调试输出 2: 开始本地采集 =====
-            print("[调试] 开始使用本地采集器获取数据...")
+            # print("[调试] 开始使用本地采集器获取数据...")
             # ===== 调试输出结束 =====
 
             collector = get_local_collector()
             data = collector.collect_all()
 
             # ===== 调试输出 3: 本地采集结果 =====
-            print("[调试] 本地数据采集完成!")
-            print(f"[调试] CPU使用率: {data.get('cpu', {}).get('usage_percent')}%")
-            print(f"[调试] 内存使用率: {data.get('memory', {}).get('usage_percent')}%")
-            print(f"[调试] 磁盘使用率: {data.get('disk', {}).get('usage_percent')}%")
-            print(f"[调试] 数据库状态: {data.get('database', {}).get('status')}")
+            # print("[调试] 本地数据采集完成!")
+            # print(f"[调试] CPU使用率: {data.get('cpu', {}).get('usage_percent')}%")
+            # print(f"[调试] 内存使用率: {data.get('memory', {}).get('usage_percent')}%")
+            # print(f"[调试] 磁盘使用率: {data.get('disk', {}).get('usage_percent')}%")
+            # print(f"[调试] 数据库状态: {data.get('database', {}).get('status')}")
             # ===== 调试输出结束 =====
 
             # Docker容器采集需要单独处理
@@ -270,9 +270,9 @@ class CloudMonitorTask:
                     client.close()
 
                     # ===== 调试输出 4: Docker容器采集结果 =====
-                    print(f"[调试] Docker容器采集完成: {len(containers)}个容器")
-                    for i, c in enumerate(containers[:3], 1):  # 只打印前3个
-                        print(f"[调试]   容器{i}: {c['name']} - {c['status']}")
+                    # print(f"[调试] Docker容器采集完成: {len(containers)}个容器")
+                    # for i, c in enumerate(containers[:3], 1):  # 只打印前3个
+                    #     print(f"[调试]   容器{i}: {c['name']} - {c['status']}")
                     # ===== 调试输出结束 =====
 
                 except Exception as e:
@@ -311,13 +311,13 @@ class CloudMonitorTask:
         data["server_name"] = server_name
 
         # ===== 调试输出 5: 最终数据摘要 =====
-        print(f"\n{'='*60}")
-        print("[调试] 数据采集完成，准备返回")
-        print(f"[调试] 服务器名称: {data.get('server_name')}")
-        print(f"[调试] 时间戳: {data.get('timestamp')}")
-        print(f"[调试] 数据包含字段: {list(data.keys())}")
-        print(f"[调试] containers数量: {len(data.get('containers', []))}")
-        print(f"{'='*60}\n")
+        # print(f"\n{'='*60}")
+        # print("[调试] 数据采集完成，准备返回")
+        # print(f"[调试] 服务器名称: {data.get('server_name')}")
+        # print(f"[调试] 时间戳: {data.get('timestamp')}")
+        # print(f"[调试] 数据包含字段: {list(data.keys())}")
+        # print(f"[调试] containers数量: {len(data.get('containers', []))}")
+        # print(f"{'='*60}\n")
         # ===== 调试输出结束 =====
 
         return data

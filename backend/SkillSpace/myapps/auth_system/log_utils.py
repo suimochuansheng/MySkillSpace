@@ -175,6 +175,8 @@ def get_module_name(path):
         return "角色管理"
     elif "/auth/menus" in path:
         return "菜单管理"
+    elif "/auth/banned-ips" in path:
+        return "封禁IP管理"
     elif "/resume" in path:
         return "简历管理"
     elif "/ai" in path:
