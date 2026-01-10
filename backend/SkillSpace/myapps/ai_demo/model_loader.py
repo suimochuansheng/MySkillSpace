@@ -56,9 +56,7 @@ ENABLE_FLASH_ATTENTION = os.getenv("ENABLE_FLASH_ATTENTION", "false").lower() ==
 
 print(f"AI引擎模式：{'阿里云API' if USE_AI_API else '本地大模型'}")
 print(f"AI模型加载开关：{'启用' if ENABLE_MODEL_LOADING else '禁用'}")
-print(
-    f"Flash Attention: {'启用' if ENABLE_FLASH_ATTENTION else '禁用（安装后可启用）'}"
-)
+print(f"Flash Attention: {'启用' if ENABLE_FLASH_ATTENTION else '禁用（安装后可启用）'}")
 
 
 def load_model_on_startup():
@@ -118,9 +116,7 @@ def load_model_on_startup():
             model_dir = local_model_path
         else:
             print("[WARNING] 本地路径无效，回退到 ModelScope 下载/校验模式...")
-            model_dir = snapshot_download(
-                MODEL_NAME, cache_dir=MODEL_CACHE_DIR, revision="master"
-            )
+            model_dir = snapshot_download(MODEL_NAME, cache_dir=MODEL_CACHE_DIR, revision="master")
 
         # =========================================================
         # ⚡ 优化 3: 加载 Tokenizer（跳过联网验证）
@@ -176,17 +172,13 @@ def load_model_on_startup():
 
         # 显示加载信息
         print("✅ 模型加载成功！")
-        print(
-            f"📊 Attention 实现: {getattr(model.config, '_attn_implementation', 'standard')}"
-        )
+        print(f"📊 Attention 实现: {getattr(model.config, '_attn_implementation', 'standard')}")
 
         # 显示显存使用情况
         if torch.cuda.is_available():
             allocated = torch.cuda.memory_allocated(0) / 1024**3
             reserved = torch.cuda.memory_reserved(0) / 1024**3
-            print(
-                f"💾 显存占用: {allocated:.2f}GB (已分配) / {reserved:.2f}GB (已预留)"
-            )
+            print(f"💾 显存占用: {allocated:.2f}GB (已分配) / {reserved:.2f}GB (已预留)")
 
     except Exception as e:
         print(f"❌ 模型加载失败：{str(e)}")
@@ -196,9 +188,7 @@ def load_model_on_startup():
 
 def get_model():
     if not AI_AVAILABLE:
-        raise RuntimeError(
-            "AI dependencies not installed. Please install required packages."
-        )
+        raise RuntimeError("AI dependencies not installed. Please install required packages.")
     if not ENABLE_MODEL_LOADING:
         raise RuntimeError("AI模型加载未启用")
     if not model_loaded or model is None:
@@ -273,14 +263,10 @@ def stream_generate_answer(prompt: str, history: list = None):
         messages.append({"role": role, "content": msg.get("content")})
     messages.append({"role": "user", "content": prompt})
 
-    text = loaded_tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
+    text = loaded_tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
     inputs = loaded_tokenizer([text], return_tensors="pt").to(DEVICE)
-    streamer = TextIteratorStreamer(
-        loaded_tokenizer, skip_prompt=True, skip_special_tokens=True
-    )
+    streamer = TextIteratorStreamer(loaded_tokenizer, skip_prompt=True, skip_special_tokens=True)
 
     # =========================================================
     # ⚡ 优化 2: 生成参数优化（关键！）

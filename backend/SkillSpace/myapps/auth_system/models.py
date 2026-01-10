@@ -55,9 +55,7 @@ class Menu(models.Model):
     order_num = models.IntegerField("显示顺序", default=0)
     path = models.CharField("路由地址", max_length=200, null=True, blank=True)
     component = models.CharField("组件路径", max_length=255, null=True, blank=True)
-    menu_type = models.CharField(
-        "菜单类型", max_length=1, choices=MENU_TYPE_CHOICES, default="C"
-    )
+    menu_type = models.CharField("菜单类型", max_length=1, choices=MENU_TYPE_CHOICES, default="C")
     perms = models.CharField(
         "权限标识",
         max_length=100,
@@ -87,17 +85,13 @@ class Role(models.Model):
     """
 
     name = models.CharField("角色名称", max_length=30, unique=True)
-    code = models.CharField(
-        "角色权限字符", max_length=100, unique=True, help_text="如 admin, common"
-    )
+    code = models.CharField("角色权限字符", max_length=100, unique=True, help_text="如 admin, common")
     remark = models.CharField("备注", max_length=500, null=True, blank=True)
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
     update_time = models.DateTimeField("更新时间", auto_now=True)
 
     # 角色与菜单是多对多关系
-    menus = models.ManyToManyField(
-        Menu, verbose_name="拥有菜单", blank=True, db_table="sys_role_menu"
-    )
+    menus = models.ManyToManyField(Menu, verbose_name="拥有菜单", blank=True, db_table="sys_role_menu")
 
     class Meta:
         verbose_name = "系统角色"
@@ -112,9 +106,7 @@ class Role(models.Model):
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField("邮箱地址", max_length=255, unique=True, db_index=True)
     username = models.CharField("用户名", max_length=150, blank=True, null=True)
-    avatar = models.CharField(
-        "头像", max_length=255, default="default.jpg", null=True, blank=True
-    )  # PDF中提到的头像
+    avatar = models.CharField("头像", max_length=255, default="default.jpg", null=True, blank=True)  # PDF中提到的头像
     phonenumber = models.CharField("手机号码", max_length=11, null=True, blank=True)
 
     # 开发环境专用：明文密码字段（仅用于调试，生产环境应删除）
@@ -131,9 +123,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
 
     # 用户与角色是多对多关系
-    roles = models.ManyToManyField(
-        Role, verbose_name="拥有角色", blank=True, db_table="sys_user_role"
-    )
+    roles = models.ManyToManyField(Role, verbose_name="拥有角色", blank=True, db_table="sys_user_role")
 
     objects = UserManager()
 
@@ -172,9 +162,7 @@ class OperationLog(models.Model):
         ("1", "失败"),
     )
 
-    user = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="操作人"
-    )
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="操作人")
     username = models.CharField("操作账号", max_length=150, blank=True)
     module = models.CharField("操作模块", max_length=50)
     action = models.CharField("操作类型", max_length=20, choices=ACTION_CHOICES)
@@ -189,9 +177,7 @@ class OperationLog(models.Model):
 
     # 响应信息
     response_data = models.TextField("响应数据", blank=True)
-    status = models.CharField(
-        "操作状态", max_length=1, choices=STATUS_CHOICES, default="0"
-    )
+    status = models.CharField("操作状态", max_length=1, choices=STATUS_CHOICES, default="0")
     error_msg = models.TextField("错误信息", blank=True)
 
     # 时间信息

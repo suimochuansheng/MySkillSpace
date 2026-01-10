@@ -2,8 +2,9 @@
 import platform
 from datetime import datetime
 
-import psutil
 from django.db import connection
+
+import psutil
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response

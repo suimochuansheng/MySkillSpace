@@ -39,9 +39,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         """断开 WebSocket 连接"""
         # 离开 Channel Group
-        await self.channel_layer.group_discard(
-            self.channel_name_prefix, self.channel_name
-        )
+        await self.channel_layer.group_discard(self.channel_name_prefix, self.channel_name)
 
         logger.info(f"❌ WebSocket 连接断开: task_id={self.task_id}, code={close_code}")
 

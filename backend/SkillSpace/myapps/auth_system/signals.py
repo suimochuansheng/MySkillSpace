@@ -46,9 +46,7 @@ def assign_default_role(sender, instance, created, **kwargs):
 
                 # 如果系统中没有任何角色，阻止用户创建
                 if not default_role:
-                    logger.error(
-                        f"❌ 无法创建用户 {instance.email}：系统中没有可用角色"
-                    )
+                    logger.error(f"❌ 无法创建用户 {instance.email}：系统中没有可用角色")
 
                     # 删除刚创建的用户
                     instance.delete()
@@ -62,9 +60,7 @@ def assign_default_role(sender, instance, created, **kwargs):
 
                 # 分配角色
                 instance.roles.add(default_role)
-                logger.info(
-                    f"✅ 自动为用户 {instance.email} 分配角色：{default_role.name}"
-                )
+                logger.info(f"✅ 自动为用户 {instance.email} 分配角色：{default_role.name}")
 
             except ValidationError:
                 # 重新抛出ValidationError（不捕获，让上层处理）

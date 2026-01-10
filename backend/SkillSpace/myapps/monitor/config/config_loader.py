@@ -58,8 +58,7 @@ class CloudServerConfigLoader:
                 return self.config_data
 
             raise FileNotFoundError(
-                f"配置文件不存在: {self.config_file}\n"
-                f"请复制 cloud_servers.example.yaml 为 cloud_servers.yaml 并填写配置"
+                f"配置文件不存在: {self.config_file}\n" f"请复制 cloud_servers.example.yaml 为 cloud_servers.yaml 并填写配置"
             )
 
         # 获取文件修改时间
@@ -151,22 +150,15 @@ class CloudServerConfigLoader:
         # 验证auth_type
         auth_type = connection.get("auth_type")
         if auth_type not in ["password", "key"]:
-            raise ValueError(
-                f"{prefix}.connection.auth_type 必须是 'password' 或 'key'"
-            )
+            raise ValueError(f"{prefix}.connection.auth_type 必须是 'password' 或 'key'")
 
         # 验证认证信息
         if auth_type == "password":
             if "password" not in connection or not connection["password"]:
                 raise ValueError(f"{prefix}.connection 使用密码认证时必须提供 password")
         elif auth_type == "key":
-            if (
-                "private_key_path" not in connection
-                or not connection["private_key_path"]
-            ):
-                raise ValueError(
-                    f"{prefix}.connection 使用密钥认证时必须提供 private_key_path"
-                )
+            if "private_key_path" not in connection or not connection["private_key_path"]:
+                raise ValueError(f"{prefix}.connection 使用密钥认证时必须提供 private_key_path")
 
     def get_global_config(self) -> Dict:
         """

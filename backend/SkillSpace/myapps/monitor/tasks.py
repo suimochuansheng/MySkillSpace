@@ -9,10 +9,11 @@ import threading
 import time
 from datetime import datetime
 
+from django.db import connection
+
 import psutil
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.db import connection
 
 logger = logging.getLogger(__name__)
 

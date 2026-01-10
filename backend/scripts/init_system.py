@@ -28,9 +28,10 @@ sys.path.insert(0, backend_dir)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SkillSpace.settings")
 django.setup()
 
-from auth_system.models import Menu, Role
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+
+from auth_system.models import Menu, Role
 
 User = get_user_model()
 
@@ -164,9 +165,7 @@ def create_superuser(admin_role):
         print(f"  用户名: {default_username}")
         print(f"  密码: {default_password}")
 
-        confirm = (
-            input("\n是否使用以上默认配置创建? (y/n，回车默认y): ").strip().lower()
-        )
+        confirm = input("\n是否使用以上默认配置创建? (y/n，回车默认y): ").strip().lower()
 
         if confirm in ["", "y", "yes"]:
             email = default_email
@@ -179,9 +178,7 @@ def create_superuser(admin_role):
 
         try:
             # 创建超级用户
-            user = User.objects.create_superuser(
-                email=email, username=username, password=password
-            )
+            user = User.objects.create_superuser(email=email, username=username, password=password)
             print("✅ 超级管理员创建成功")
             print(f"   邮箱: {user.email}")
             print(f"   用户名: {user.username}")

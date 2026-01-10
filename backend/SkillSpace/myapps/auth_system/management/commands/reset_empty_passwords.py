@@ -3,8 +3,9 @@
 Django管理命令：批量重置空密码用户
 使用方法：python manage.py reset_empty_passwords
 """
-from auth_system.models import User
 from django.core.management.base import BaseCommand
+
+from auth_system.models import User
 
 
 class Command(BaseCommand):
@@ -36,9 +37,7 @@ class Command(BaseCommand):
             if not user.password or not user.password.startswith("pbkdf2_"):
                 users_with_empty_password.append(user)
 
-        self.stdout.write(
-            f"🔍 找到 {len(users_with_empty_password)} 个密码异常的用户："
-        )
+        self.stdout.write(f"🔍 找到 {len(users_with_empty_password)} 个密码异常的用户：")
         if len(users_with_empty_password) == 0:
             self.stdout.write("  （无）")
             self.stdout.write("")
@@ -76,9 +75,7 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write("=" * 60)
         self.stdout.write(
-            self.style.SUCCESS(
-                f"✅ 修复完成！成功重置 {fixed_count}/{len(users_with_empty_password)} 个用户密码"
-            )
+            self.style.SUCCESS(f"✅ 修复完成！成功重置 {fixed_count}/{len(users_with_empty_password)} 个用户密码")
         )
         self.stdout.write("=" * 60)
         self.stdout.write("")

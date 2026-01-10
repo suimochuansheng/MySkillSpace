@@ -130,29 +130,10 @@ class CloudMonitorTask:
                         server_name = server_config["name"]
                         group_name = f"cloud_monitor_{hashlib.md5(server_name.encode()).hexdigest()}"
 
-                        # ===== 调试输出 6: WebSocket推送前 =====
-                        print(f"\n{'*'*60}")
-                        print("[调试] 准备推送数据到WebSocket")
-                        print(f"[调试] Group名称: {group_name}")
-                        print(f"[调试] 数据类型: {type(data)}")
-                        print(f"[调试] 数据大小: {len(str(data))} 字符")
-                        print(
-                            f"[调试] CPU: {data.get('cpu', {}).get('usage_percent')}%"
-                        )
-                        print(
-                            f"[调试] 内存: {data.get('memory', {}).get('usage_percent')}%"
-                        )
-                        print(f"{'*'*60}\n")
-                        # ===== 调试输出结束 =====
-
                         async_to_sync(self.channel_layer.group_send)(
                             group_name,
                             {"type": "cloud_status_update", "data": data},
                         )
-
-                        # ===== 调试输出 7: WebSocket推送后 =====
-                        print(f"[调试] ✅ WebSocket推送成功: {server_name}\n")
-                        # ===== 调试输出结束 =====
 
                         logger.debug(f"数据采集并推送成功: {server_name}")
 
@@ -187,32 +168,12 @@ class CloudMonitorTask:
         # 检测是否为本机
         is_local = self._is_localhost(host)
 
-        # ===== 调试输出 1: 本机检测结果 =====
-        print(f"\n{'='*60}")
-        print(f"[调试] 服务器: {server_name}")
-        print(f"[调试] 配置IP: {host}")
-        print(f"[调试] 是否本机: {is_local}")
-        print(f"{'='*60}\n")
-        # ===== 调试输出结束 =====
-
         if is_local:
             # 使用本地采集器（无需SSH）
             logger.info(f"检测到本机监控，使用本地采集器: {server_name}")
 
-            # ===== 调试输出 2: 开始本地采集 =====
-            print("[调试] 开始使用本地采集器获取数据...")
-            # ===== 调试输出结束 =====
-
             collector = get_local_collector()
             data = collector.collect_all()
-
-            # ===== 调试输出 3: 本地采集结果 =====
-            print("[调试] 本地数据采集完成!")
-            print(f"[调试] CPU使用率: {data.get('cpu', {}).get('usage_percent')}%")
-            print(f"[调试] 内存使用率: {data.get('memory', {}).get('usage_percent')}%")
-            print(f"[调试] 磁盘使用率: {data.get('disk', {}).get('usage_percent')}%")
-            print(f"[调试] 数据库状态: {data.get('database', {}).get('status')}")
-            # ===== 调试输出结束 =====
 
             # Docker容器采集需要单独处理
             if monitoring.get("enable_docker", False):
@@ -237,9 +198,7 @@ class CloudMonitorTask:
                         if created_time:
                             # 转换ISO时间格式为可读格式
                             try:
-                                dt = datetime.fromisoformat(
-                                    created_time.replace("Z", "+00:00")
-                                )
+                                dt = datetime.fromisoformat(created_time.replace("Z", "+00:00"))
                                 created = dt.strftime("%Y-%m-%d %H:%M:%S")
                             except Exception:
                                 created = created_time[:19]  # 截取前19个字符
@@ -247,11 +206,7 @@ class CloudMonitorTask:
                             created = ""
 
                         # 获取镜像名称
-                        image_name = (
-                            container.image.tags[0]
-                            if container.image.tags
-                            else container.image.short_id
-                        )
+                        image_name = container.image.tags[0] if container.image.tags else container.image.short_id
 
                         containers.append(
                             {
@@ -268,12 +223,6 @@ class CloudMonitorTask:
 
                     # 关闭客户端连接
                     client.close()
-
-                    # ===== 调试输出 4: Docker容器采集结果 =====
-                    print(f"[调试] Docker容器采集完成: {len(containers)}个容器")
-                    for i, c in enumerate(containers[:3], 1):  # 只打印前3个
-                        print(f"[调试]   容器{i}: {c['name']} - {c['status']}")
-                    # ===== 调试输出结束 =====
 
                 except Exception as e:
                     logger.error(f"本地采集Docker容器失败: {e}")
@@ -294,9 +243,7 @@ class CloudMonitorTask:
                         service_data = collector.check_service(service_config)
                         data["services"].append(service_data)
                     except Exception as e:
-                        logger.error(
-                            f"采集服务状态失败 {service_config.get('name')}: {e}"
-                        )
+                        logger.error(f"采集服务状态失败 {service_config.get('name')}: {e}")
 
             # 采集Docker容器
             if monitoring.get("enable_docker", False):
@@ -309,16 +256,6 @@ class CloudMonitorTask:
         # 添加时间戳和服务器名称
         data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         data["server_name"] = server_name
-
-        # ===== 调试输出 5: 最终数据摘要 =====
-        print(f"\n{'='*60}")
-        print("[调试] 数据采集完成，准备返回")
-        print(f"[调试] 服务器名称: {data.get('server_name')}")
-        print(f"[调试] 时间戳: {data.get('timestamp')}")
-        print(f"[调试] 数据包含字段: {list(data.keys())}")
-        print(f"[调试] containers数量: {len(data.get('containers', []))}")
-        print(f"{'='*60}\n")
-        # ===== 调试输出结束 =====
 
         return data
 
@@ -338,9 +275,7 @@ class CloudMonitorTask:
             from .utils.ssh_client import SSHClientManager
         except ImportError as e:
             logger.error(f"SSH客户端模块导入失败（可能缺少paramiko）: {e}")
-            raise ImportError(
-                "SSH远程监控需要安装paramiko库。请运行: pip install paramiko"
-            ) from e
+            raise ImportError("SSH远程监控需要安装paramiko库。请运行: pip install paramiko") from e
 
         # 检查是否已有连接
         if server_name in self.ssh_connections:
@@ -389,9 +324,7 @@ class CloudMonitorTask:
             self.config_loader.reload()
 
             # 关闭不再存在或被禁用的服务器连接
-            current_servers = {
-                s["name"] for s in self.config_loader.get_servers(enabled_only=True)
-            }
+            current_servers = {s["name"] for s in self.config_loader.get_servers(enabled_only=True)}
             to_remove = []
 
             for server_name in self.ssh_connections.keys():

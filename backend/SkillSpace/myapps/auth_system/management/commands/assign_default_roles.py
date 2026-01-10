@@ -3,8 +3,9 @@
 Django管理命令：为所有没有角色的用户分配默认角色
 使用方法：python manage.py assign_default_roles
 """
-from auth_system.models import Role, User
 from django.core.management.base import BaseCommand
+
+from auth_system.models import Role, User
 
 
 class Command(BaseCommand):
@@ -35,11 +36,7 @@ class Command(BaseCommand):
         if not default_role:
             default_role = roles.first()
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"✅ 将使用默认角色：{default_role.name} ({default_role.code})"
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"✅ 将使用默认角色：{default_role.name} ({default_role.code})"))
         self.stdout.write("")
 
         # 3. 查找没有角色的用户
@@ -76,11 +73,7 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write("=" * 60)
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"✅ 修复完成！成功修复 {fixed_count}/{len(users_without_roles)} 个用户"
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"✅ 修复完成！成功修复 {fixed_count}/{len(users_without_roles)} 个用户"))
         self.stdout.write("=" * 60)
         self.stdout.write("")
         self.stdout.write("下一步：")

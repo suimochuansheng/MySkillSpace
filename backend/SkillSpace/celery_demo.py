@@ -21,9 +21,7 @@ app.conf.task_queues = (
         name="gpu_queue",  # 队列名称（唯一标识）
         routing_key="gpu.#",  # 路由键：匹配任务的路由规则（# 是通配符，匹配 gpu. 开头的所有路由键）
         priority=9,  # 队列优先级：数值越大，Worker 越优先消费该队列的任务（范围需 ≤ 下面的 x-max-priority）
-        queue_arguments={
-            "x-max-priority": 10
-        },  # RabbitMQ 扩展参数：设置队列支持的最大优先级（仅 RabbitMQ 支持该参数）
+        queue_arguments={"x-max-priority": 10},  # RabbitMQ 扩展参数：设置队列支持的最大优先级（仅 RabbitMQ 支持该参数）
     ),
     # 2. API 业务队列：处理接口类任务（如简历解析、数据查询，耗时中等）
     Queue(

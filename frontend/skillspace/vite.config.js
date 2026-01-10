@@ -15,8 +15,9 @@ export default defineConfig({
   },
   // 开发服务器配置
   server: {
+    host: '0.0.0.0', // 监听所有网络接口（WSL2 必须）
     port: 5173, // 前端开发服务器端口
-    open: true, // 自动打开浏览器
+    open: false, // WSL2 环境不要自动打开浏览器
     proxy: {
       // HTTP API 代理
       '/api': {

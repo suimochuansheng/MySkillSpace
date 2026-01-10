@@ -25,11 +25,7 @@ class SystemMonitorConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         # 发送连接成功消息
-        await self.send(
-            text_data=json.dumps(
-                {"type": "connection_established", "message": "已连接到系统监控服务"}
-            )
-        )
+        await self.send(text_data=json.dumps({"type": "connection_established", "message": "已连接到系统监控服务"}))
 
     async def disconnect(self, close_code):
         """客户端断开连接时调用"""
@@ -44,13 +40,9 @@ class SystemMonitorConsumer(AsyncWebsocketConsumer):
 
             # 处理客户端发来的控制消息（如暂停/恢复）
             if message_type == "ping":
-                await self.send(
-                    text_data=json.dumps({"type": "pong", "message": "服务器响应正常"})
-                )
+                await self.send(text_data=json.dumps({"type": "pong", "message": "服务器响应正常"}))
         except json.JSONDecodeError:
-            await self.send(
-                text_data=json.dumps({"type": "error", "message": "无效的消息格式"})
-            )
+            await self.send(text_data=json.dumps({"type": "error", "message": "无效的消息格式"}))
 
     async def system_status_update(self, event):
         """
@@ -58,6 +50,4 @@ class SystemMonitorConsumer(AsyncWebsocketConsumer):
         通过 channel_layer.group_send() 调用此方法
         """
         # 发送系统状态数据到 WebSocket
-        await self.send(
-            text_data=json.dumps({"type": "system_status", "data": event["data"]})
-        )
+        await self.send(text_data=json.dumps({"type": "system_status", "data": event["data"]}))

@@ -93,9 +93,7 @@ class ChatRecordAdmin(admin.ModelAdmin):
             )
         else:
             # 未登录用户显示为红色
-            return format_html(
-                '<span style="color: #dc3545; font-style: italic;">未登录</span>'
-            )
+            return format_html('<span style="color: #dc3545; font-style: italic;">未登录</span>')
 
     user_display.short_description = "用户账号"
 

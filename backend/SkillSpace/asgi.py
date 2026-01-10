@@ -6,10 +6,11 @@ ASGI config for SkillSpace project.
 
 import os
 
+from django.core.asgi import get_asgi_application
+
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
-from django.core.asgi import get_asgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SkillSpace.settings")
 
@@ -27,12 +28,7 @@ application = ProtocolTypeRouter(
         "http": django_asgi_app,
         # WebSocket 请求使用 Channels
         "websocket": AllowedHostsOriginValidator(
-            AuthMiddlewareStack(
-                URLRouter(
-                    ai_routing.websocket_urlpatterns
-                    + monitor_routing.websocket_urlpatterns
-                )
-            )
+            AuthMiddlewareStack(URLRouter(ai_routing.websocket_urlpatterns + monitor_routing.websocket_urlpatterns))
         ),
     }
 )

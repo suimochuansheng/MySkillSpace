@@ -11,9 +11,7 @@ from .tasks import fetch_realtime_data, process_uploaded_file, send_welcome_emai
 # Create your views here.
 
 
-@method_decorator(
-    csrf_exempt, name="dispatch"
-)  # csrf_exempt 装饰器免除了对CSRF令牌的验证
+@method_decorator(csrf_exempt, name="dispatch")  # csrf_exempt 装饰器免除了对CSRF令牌的验证
 class TriggerTaskView(View):
     def post(self, request):
         # 解析请求体中的JSON数据，获取task_type参数，用于决定执行哪种异步任务

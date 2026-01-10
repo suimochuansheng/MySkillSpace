@@ -153,11 +153,7 @@ def get_request_params(request):
     if hasattr(request, "data") and request.data:
         # 过滤敏感信息
         data = {
-            k: (
-                "******"
-                if k in ["password", "old_password", "new_password", "password_confirm"]
-                else v
-            )
+            k: ("******" if k in ["password", "old_password", "new_password", "password_confirm"] else v)
             for k, v in dict(request.data).items()
         }
         params["JSON"] = data
@@ -245,12 +241,7 @@ def record_operation_log(request, response, start_time, error=None):
             response_data = response_str[:1000]  # 限制最多1000字符
 
         # 判断状态
-        status = (
-            "1"
-            if error
-            or (hasattr(response, "status_code") and response.status_code >= 400)
-            else "0"
-        )
+        status = "1" if error or (hasattr(response, "status_code") and response.status_code >= 400) else "0"
 
         # 创建日志
         OperationLog.objects.create(
@@ -338,9 +329,7 @@ def record_fail2ban_log(request, account):
             handler = logging.FileHandler(log_file, encoding="utf-8")
 
             # 设置日志格式（fail2ban需要的格式）
-            formatter = logging.Formatter(
-                "%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
             handler.setFormatter(formatter)
 
             # 添加处理器
