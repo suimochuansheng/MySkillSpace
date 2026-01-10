@@ -70,23 +70,17 @@ class SSHClientManager:
                 logger.info(f"使用SSH密钥认证连接: {self.host}:{self.port}")
                 try:
                     # 尝试加载RSA密钥
-                    private_key = paramiko.RSAKey.from_private_key_file(
-                        self.key_path, password=self.passphrase
-                    )
+                    private_key = paramiko.RSAKey.from_private_key_file(self.key_path, password=self.passphrase)
                 except paramiko.ssh_exception.PasswordRequiredException:
                     logger.error(f"私钥需要密码: {self.key_path}")
                     raise
                 except paramiko.ssh_exception.SSHException:
                     # 如果不是RSA密钥，尝试其他类型
                     try:
-                        private_key = paramiko.Ed25519Key.from_private_key_file(
-                            self.key_path, password=self.passphrase
-                        )
+                        private_key = paramiko.Ed25519Key.from_private_key_file(self.key_path, password=self.passphrase)
                         # 如果不是Ed25519密钥，尝试其他类型
                     except paramiko.ssh_exception.SSHException:
-                        private_key = paramiko.ECDSAKey.from_private_key_file(
-                            self.key_path, password=self.passphrase
-                        )
+                        private_key = paramiko.ECDSAKey.from_private_key_file(self.key_path, password=self.passphrase)
 
                 self.client.connect(
                     hostname=self.host,

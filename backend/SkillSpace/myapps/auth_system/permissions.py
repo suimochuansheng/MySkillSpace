@@ -38,9 +38,7 @@ def has_permission(user, perm_code):
         return False
 
     # 5. 查询角色关联的菜单中是否包含该权限标识
-    has_perm = Menu.objects.filter(
-        role__in=user_roles, perms=perm_code  # 用户拥有的角色  # 匹配权限标识
-    ).exists()
+    has_perm = Menu.objects.filter(role__in=user_roles, perms=perm_code).exists()  # 用户拥有的角色  # 匹配权限标识
 
     return has_perm
 
@@ -219,11 +217,7 @@ class IsAdminUser(permissions.BasePermission):
         """
         检查用户是否是管理员
         """
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and (request.user.is_staff or request.user.is_superuser)
-        )
+        return bool(request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
 
 
 # ==========================================

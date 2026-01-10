@@ -7,6 +7,7 @@ import uuid
 from django.http import StreamingHttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -79,26 +80,16 @@ class AITaskListAPI(APIView):
                     "celery_task_id": task.celery_task_id,
                     "user": task.user.username if task.user else "匿名用户",
                     "session_id": task.session_id,
-                    "prompt": (
-                        task.prompt[:100] + "..."
-                        if len(task.prompt) > 100
-                        else task.prompt
-                    ),
+                    "prompt": (task.prompt[:100] + "..." if len(task.prompt) > 100 else task.prompt),
                     "status": task.status,
                     "status_display": task.get_status_display(),
                     "ws_url": task.ws_url,
                     "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "completed_at": (
-                        task.completed_at.strftime("%Y-%m-%d %H:%M:%S")
-                        if task.completed_at
-                        else None
-                    ),
+                    "completed_at": (task.completed_at.strftime("%Y-%m-%d %H:%M:%S") if task.completed_at else None),
                 }
             )
 
-        return Response(
-            {"code": 200, "msg": "success", "data": data, "count": len(data)}
-        )
+        return Response({"code": 200, "msg": "success", "data": data, "count": len(data)})
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -129,26 +120,18 @@ class QwenChatAsyncAPI(APIView):
 
         # 获取验证后的数据
         prompt = request_serializer.validated_data["prompt"]
-        session_id = request_serializer.validated_data.get("session_id") or str(
-            uuid.uuid4()
-        )
+        session_id = request_serializer.validated_data.get("session_id") or str(uuid.uuid4())
 
         try:
             # 2. 获取当前登录用户（如果已登录）
             current_user = request.user if request.user.is_authenticated else None
 
             # 3. 保存用户提问到数据库
-            ChatRecord.objects.create(
-                session_id=session_id, role="user", content=prompt, user=current_user
-            )
+            ChatRecord.objects.create(session_id=session_id, role="user", content=prompt, user=current_user)
 
             # 4. 获取历史上下文
-            history_objs = ChatRecord.objects.filter(session_id=session_id).order_by(
-                "created_at"
-            )
-            history_data = [
-                {"role": r.role, "content": r.content} for r in history_objs
-            ]
+            history_objs = ChatRecord.objects.filter(session_id=session_id).order_by("created_at")
+            history_data = [{"role": r.role, "content": r.content} for r in history_objs]
 
             # 5. 生成唯一的 task_id
             task_id = str(uuid.uuid4())
@@ -178,9 +161,7 @@ class QwenChatAsyncAPI(APIView):
             )
 
             username = current_user.username if current_user else "匿名用户"
-            logger.info(
-                f"✅ 任务已创建: user={username}, task_id={task_id}, celery_id={task.id}"
-            )
+            logger.info(f"✅ 任务已创建: user={username}, task_id={task_id}, celery_id={task.id}")
 
             # 9. 返回任务信息
             return Response(
@@ -228,9 +209,7 @@ class QwenChatAPI(APIView):
                 {"code": 400, "msg": "缺少 session_id 参数", "data": []},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        records = ChatRecord.objects.filter(session_id=session_id).order_by(
-            "created_at"
-        )
+        records = ChatRecord.objects.filter(session_id=session_id).order_by("created_at")
         serializer = ChatRecordSerializer(records, many=True)
         return Response(
             {"code": 200, "msg": "success", "data": serializer.data},
@@ -248,26 +227,16 @@ class QwenChatAPI(APIView):
 
         # 获取验证后的数据
         prompt = request_serializer.validated_data["prompt"]
-        session_id = request_serializer.validated_data.get("session_id") or str(
-            uuid.uuid4()
-        )
-        stream_mode = request_serializer.validated_data.get(
-            "stream", True
-        )  # 获取流式开关
+        session_id = request_serializer.validated_data.get("session_id") or str(uuid.uuid4())
+        stream_mode = request_serializer.validated_data.get("stream", True)  # 获取流式开关
 
         try:
             # 2. 保存用户提问到数据库 (立即保存)
-            ChatRecord.objects.create(
-                session_id=session_id, role="user", content=prompt
-            )
+            ChatRecord.objects.create(session_id=session_id, role="user", content=prompt)
 
             # 3. 获取历史上下文
-            history_objs = ChatRecord.objects.filter(session_id=session_id).order_by(
-                "created_at"
-            )
-            history_data = [
-                {"role": r.role, "content": r.content} for r in history_objs
-            ]
+            history_objs = ChatRecord.objects.filter(session_id=session_id).order_by("created_at")
+            history_data = [{"role": r.role, "content": r.content} for r in history_objs]
 
             # 4. 调用真实模型生成器（如果模型未启用将抛出错误）
             generator = stream_generate_answer(prompt, history=history_data)
@@ -315,9 +284,7 @@ class QwenChatAPI(APIView):
                         logger.error(f"Stream Error: {e}")
                         yield f"data: {json.dumps({'code': 500, 'msg': str(e), 'type': 'error'})}\n\n"
 
-                response = StreamingHttpResponse(
-                    event_stream(), content_type="text/event-stream"
-                )
+                response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
                 # 禁用缓存确保实时性
                 response["Cache-Control"] = "no-cache"
                 response["X-Accel-Buffering"] = "no"
@@ -339,9 +306,7 @@ class QwenChatAPI(APIView):
 
                 # 保存答案到数据库（不保存思考过程）
                 if full_answer:
-                    ChatRecord.objects.create(
-                        session_id=session_id, role="assistant", content=full_answer
-                    )
+                    ChatRecord.objects.create(session_id=session_id, role="assistant", content=full_answer)
 
                 logger.info(
                     f"AI对话完成(Block) - Session: {session_id}, 思考长度: {len(thinking_content)}, 答案长度: {len(full_answer)}"

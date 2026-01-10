@@ -3,8 +3,9 @@
 初始化系统完整菜单数据（覆盖所有模块）
 使用方法: python manage.py init_menus
 """
-from auth_system.models import Menu
 from django.core.management.base import BaseCommand
+
+from auth_system.models import Menu
 
 
 class Command(BaseCommand):

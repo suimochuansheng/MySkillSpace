@@ -1,3 +1,5 @@
+from django.urls import path
+
 from auth_system.views import (
     BannedIPViewSet,
     CurrentUserView,
@@ -11,7 +13,6 @@ from auth_system.views import (
     UserManagementViewSet,
     UserRegistrationView,
 )
-from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 # 创建路由器用于ViewSet

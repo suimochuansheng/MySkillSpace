@@ -52,9 +52,7 @@ def check_and_fix_passwords():
             print("  🔧 准备修复...")
 
             # 询问是否修复
-            response = input(
-                f"  是否将用户 {user.email} 的密码重置为 '123456'? (y/n): "
-            )
+            response = input(f"  是否将用户 {user.email} 的密码重置为 '123456'? (y/n): ")
 
             if response.lower() == "y":
                 user.set_password("123456")

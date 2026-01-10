@@ -122,8 +122,7 @@ class MonitorConfig(AppConfig):
                         logger.info(f"本机监控配置已创建: {hostname}")
                     else:
                         logger.info(
-                            "未找到云服务器配置文件 (cloud_servers.yaml)，跳过远程监控功能。"
-                            "当前系统将只监控本地服务器。"
+                            "未找到云服务器配置文件 (cloud_servers.yaml)，跳过远程监控功能。" "当前系统将只监控本地服务器。"
                         )
                         raise  # Windows环境下没有配置文件就退出
 

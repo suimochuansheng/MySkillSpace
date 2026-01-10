@@ -203,11 +203,7 @@ class OperationLogMiddleware(MiddlewareMixin):
                 duration = 0
 
             # 提取信息
-            username = (
-                request.user.username
-                if request.user and request.user.is_authenticated
-                else "未知用户"
-            )
+            username = request.user.username if request.user and request.user.is_authenticated else "未知用户"
             ip_address = self._get_client_ip(request)
             method = request.method
             url = request.path
@@ -225,11 +221,7 @@ class OperationLogMiddleware(MiddlewareMixin):
 
             # 创建操作日志记录
             log = OperationLog.objects.create(
-                user=(
-                    request.user
-                    if request.user and request.user.is_authenticated
-                    else None
-                ),
+                user=(request.user if request.user and request.user.is_authenticated else None),
                 username=username,
                 module=module,
                 action=action,

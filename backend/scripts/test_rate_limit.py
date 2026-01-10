@@ -116,15 +116,11 @@ def test_endpoint(
     test_passed = True
 
     if not (expected_success - 2 <= success_count <= expected_success + 2):
-        print(
-            f"{Colors.RED}✗ 失败：成功次数 {success_count} 不符合预期 {expected_success}±2{Colors.NC}"
-        )
+        print(f"{Colors.RED}✗ 失败：成功次数 {success_count} 不符合预期 {expected_success}±2{Colors.NC}")
         test_passed = False
 
     if not (expected_429 - 2 <= error_429_count <= expected_429 + 2):
-        print(
-            f"{Colors.RED}✗ 失败：429次数 {error_429_count} 不符合预期 {expected_429}±2{Colors.NC}"
-        )
+        print(f"{Colors.RED}✗ 失败：429次数 {error_429_count} 不符合预期 {expected_429}±2{Colors.NC}")
         test_passed = False
 
     if test_passed:

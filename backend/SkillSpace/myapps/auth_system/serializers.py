@@ -1,5 +1,6 @@
 # auth_system/serializers.py
 from django.contrib.auth import authenticate
+
 from rest_framework import serializers
 
 from .models import LoginLog, Menu, OperationLog, Role, User
@@ -142,9 +143,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError(
-                {"password_confirm": "两次输入的密码不一致"}
-            )
+            raise serializers.ValidationError({"password_confirm": "两次输入的密码不一致"})
         attrs.pop("password_confirm")
         return attrs
 
@@ -162,12 +161,8 @@ class UserLoginSerializer(serializers.Serializer):
     用户登录序列化器 (增强验证逻辑)
     """
 
-    account = serializers.CharField(
-        required=True, help_text="登录账户（邮箱地址或用户名）"
-    )
-    password = serializers.CharField(
-        required=True, write_only=True, style={"input_type": "password"}
-    )
+    account = serializers.CharField(required=True, help_text="登录账户（邮箱地址或用户名）")
+    password = serializers.CharField(required=True, write_only=True, style={"input_type": "password"})
     user = UserSerializer(read_only=True)
 
     def validate(self, attrs):
@@ -202,9 +197,7 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "账户或密码错误，请重试"})
 
         if not user.is_active:
-            raise serializers.ValidationError(
-                {"detail": "该账户已被禁用，请联系管理员"}
-            )
+            raise serializers.ValidationError({"detail": "该账户已被禁用，请联系管理员"})
 
         attrs["user"] = user
         return attrs
@@ -227,9 +220,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["new_password_confirm"]:
-            raise serializers.ValidationError(
-                {"new_password_confirm": "两次输入的新密码不一致"}
-            )
+            raise serializers.ValidationError({"new_password_confirm": "两次输入的新密码不一致"})
         attrs.pop("new_password_confirm")
         return attrs
 

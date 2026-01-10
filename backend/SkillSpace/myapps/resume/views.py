@@ -27,9 +27,7 @@ class ResumeDiagnosisView(APIView):
                 resume_content = extract_text_from_file(resume_file)
 
                 if not resume_content or len(resume_content) < 10:
-                    return Response(
-                        {"code": 400, "message": "文件解析为空"}, status=400
-                    )
+                    return Response({"code": 400, "message": "文件解析为空"}, status=400)
 
                 result = ai_analyze_resume(resume_content, jd_text)
                 return Response({"code": 200, "data": result})

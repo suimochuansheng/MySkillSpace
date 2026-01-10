@@ -10,8 +10,9 @@ import socket
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import psutil
 from django.db import connection
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +137,7 @@ class LocalLinuxCollector:
                 "load_avg_1": load_avg_1,
                 "load_avg_5": load_avg_5,
                 "load_avg_15": load_avg_15,
-                "per_core_usage": [
-                    round(x, 2) for x in psutil.cpu_percent(percpu=True)
-                ],
+                "per_core_usage": [round(x, 2) for x in psutil.cpu_percent(percpu=True)],
             }
         except Exception as e:
             logger.error(f"采集CPU信息失败: {e}")
@@ -217,9 +216,7 @@ class LocalLinuxCollector:
                 except PermissionError:
                     continue
 
-            usage_percent = (
-                round((total_used / total_size * 100), 2) if total_size > 0 else 0
-            )
+            usage_percent = round((total_used / total_size * 100), 2) if total_size > 0 else 0
 
             return {
                 "total": self._bytes_to_gb(total_size),
@@ -317,9 +314,7 @@ class LocalLinuxCollector:
                     size_result = cursor.fetchone()
                     db_size = f"{size_result[0]} MB" if size_result[0] else "Unknown"
 
-                elif (
-                    "postgresql" in db_engine.lower() or "psycopg" in db_engine.lower()
-                ):
+                elif "postgresql" in db_engine.lower() or "psycopg" in db_engine.lower():
                     cursor.execute("SELECT version()")
                     db_version = cursor.fetchone()[0]
 

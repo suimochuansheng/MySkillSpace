@@ -17,12 +17,8 @@ class AITask(models.Model):
         ("failed", "失败"),
     )
 
-    task_id = models.CharField(
-        max_length=100, unique=True, db_index=True, help_text="任务唯一标识"
-    )
-    celery_task_id = models.CharField(
-        max_length=100, db_index=True, help_text="Celery任务ID"
-    )
+    task_id = models.CharField(max_length=100, unique=True, db_index=True, help_text="任务唯一标识")
+    celery_task_id = models.CharField(max_length=100, db_index=True, help_text="Celery任务ID")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -33,9 +29,7 @@ class AITask(models.Model):
     )
     session_id = models.CharField(max_length=100, db_index=True, help_text="会话ID")
     prompt = models.TextField(help_text="用户提问")
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending", help_text="任务状态"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", help_text="任务状态")
     ws_url = models.CharField(max_length=500, help_text="WebSocket连接地址")
     created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间")
     completed_at = models.DateTimeField(null=True, blank=True, help_text="完成时间")
@@ -61,9 +55,7 @@ class ChatRecord(models.Model):
     对话记录表
     """
 
-    session_id = models.CharField(
-        max_length=100, db_index=True, help_text="会话ID，用于区分不同用户的对话"
-    )
+    session_id = models.CharField(max_length=100, db_index=True, help_text="会话ID，用于区分不同用户的对话")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -72,13 +64,9 @@ class ChatRecord(models.Model):
         related_name="chat_records",
         help_text="对话用户（可为空，支持匿名）",
     )
-    role = models.CharField(
-        max_length=20, choices=(("user", "User"), ("assistant", "AI")), help_text="角色"
-    )
+    role = models.CharField(max_length=20, choices=(("user", "User"), ("assistant", "AI")), help_text="角色")
     content = models.TextField(help_text="对话内容")
-    is_hidden = models.BooleanField(
-        default=False, db_index=True, help_text="是否隐藏此记录（软删除）"
-    )
+    is_hidden = models.BooleanField(default=False, db_index=True, help_text="是否隐藏此记录（软删除）")
     created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间")
 
     class Meta:

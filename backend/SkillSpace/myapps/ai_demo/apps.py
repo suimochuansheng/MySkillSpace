@@ -28,8 +28,6 @@ class AiDemoConfig(AppConfig):
                 print(f"[ERROR] 模型加载线程异常：{e}")
 
         # 启动后台线程
-        thread = threading.Thread(
-            target=load_model_async, daemon=True, name="ModelLoader"
-        )
+        thread = threading.Thread(target=load_model_async, daemon=True, name="ModelLoader")
         thread.start()
         print("[INFO] AI模型加载线程已启动，服务将立即就绪")

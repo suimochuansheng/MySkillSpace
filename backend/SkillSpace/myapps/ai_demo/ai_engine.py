@@ -33,9 +33,7 @@ class QwenEngine:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"🖥️  检测到运行设备: {device} (RTX 3080 应该显示 cuda)")
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_path, trust_remote_code=True
-            )
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 device_map="auto",  # 自动分配到 GPU
@@ -61,20 +59,13 @@ class QwenEngine:
             {"role": "system", "content": "你是一个专业的简历分析助手。"},
             {"role": "user", "content": prompt},
         ]
-        text = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+        text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         model_inputs = self.tokenizer([text], return_tensors="pt").to("cuda")
 
         generated_ids = self.model.generate(model_inputs.input_ids, max_new_tokens=512)
-        generated_ids = [
-            output_ids[len(input_ids) :]
-            for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-        ]
+        generated_ids = [output_ids[len(input_ids) :] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
 
-        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
-            0
-        ]
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return response
 
 

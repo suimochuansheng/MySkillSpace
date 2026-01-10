@@ -24,13 +24,9 @@ class CloudMonitorConsumer(AsyncWebsocketConsumer):
         # URL格式：ws://host/ws/monitor/cloud/{server_name}/
         self.server_name = self.scope["url_route"]["kwargs"]["server_name"]
         # 将服务器名称转换为URL安全的ASCII字符（支持中文）
-        self.room_group_name = (
-            f"cloud_monitor_{hashlib.md5(self.server_name.encode()).hexdigest()}"
-        )
+        self.room_group_name = f"cloud_monitor_{hashlib.md5(self.server_name.encode()).hexdigest()}"
 
-        logger.info(
-            f"WebSocket连接请求: 服务器={self.server_name}, group={self.room_group_name}"
-        )
+        logger.info(f"WebSocket连接请求: 服务器={self.server_name}, group={self.room_group_name}")
 
         # 加入频道组
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -86,24 +82,14 @@ class CloudMonitorConsumer(AsyncWebsocketConsumer):
             # 处理其他控制消息（可扩展）
             elif message_type == "get_status":
                 # 客户端请求立即获取状态（可选功能）
-                await self.send(
-                    text_data=json.dumps(
-                        {"type": "info", "message": "请等待下一次数据推送"}
-                    )
-                )
+                await self.send(text_data=json.dumps({"type": "info", "message": "请等待下一次数据推送"}))
 
         except json.JSONDecodeError as e:
             logger.error(f"JSON解析失败: {e}")
-            await self.send(
-                text_data=json.dumps({"type": "error", "message": "无效的消息格式"})
-            )
+            await self.send(text_data=json.dumps({"type": "error", "message": "无效的消息格式"}))
         except Exception as e:
             logger.error(f"处理消息失败: {e}")
-            await self.send(
-                text_data=json.dumps(
-                    {"type": "error", "message": f"服务器错误: {str(e)}"}
-                )
-            )
+            await self.send(text_data=json.dumps({"type": "error", "message": f"服务器错误: {str(e)}"}))
 
     async def cloud_status_update(self, event):
         """
@@ -116,6 +102,4 @@ class CloudMonitorConsumer(AsyncWebsocketConsumer):
         logger.debug(f"推送数据到客户端: {self.server_name}")
 
         # 发送云服务器状态数据到 WebSocket
-        await self.send(
-            text_data=json.dumps({"type": "cloud_status", "data": event["data"]})
-        )
+        await self.send(text_data=json.dumps({"type": "cloud_status", "data": event["data"]}))

@@ -32,12 +32,8 @@ class UserCreationForm(forms.ModelForm):
     用户创建表单，包含密码和确认密码字段
     """
 
-    password1 = forms.CharField(
-        label="密码", widget=forms.PasswordInput, help_text="请输入密码，至少6位"
-    )
-    password2 = forms.CharField(
-        label="确认密码", widget=forms.PasswordInput, help_text="再次输入相同的密码"
-    )
+    password1 = forms.CharField(label="密码", widget=forms.PasswordInput, help_text="请输入密码，至少6位")
+    password2 = forms.CharField(label="确认密码", widget=forms.PasswordInput, help_text="再次输入相同的密码")
 
     class Meta:
         model = User
@@ -73,10 +69,7 @@ class UserChangeForm(forms.ModelForm):
 
     password = ReadOnlyPasswordHashField(
         label="密码",
-        help_text=(
-            "密码以加密形式存储，无法查看原始密码。 "
-            '<a href="../password/">点击此处修改密码</a>。'
-        ),
+        help_text=("密码以加密形式存储，无法查看原始密码。 " '<a href="../password/">点击此处修改密码</a>。'),
     )
 
     class Meta:

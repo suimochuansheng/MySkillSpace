@@ -22,12 +22,8 @@ class AsyncTask(models.Model):
     ]
 
     task_id = models.CharField(max_length=255, unique=True, verbose_name="任务ID")
-    task_type = models.CharField(
-        max_length=10, choices=TASK_TYPES, verbose_name="任务类型"
-    )
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="状态"
-    )
+    task_type = models.CharField(max_length=10, choices=TASK_TYPES, verbose_name="任务类型")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="状态")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
     class Meta:

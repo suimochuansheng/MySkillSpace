@@ -1,5 +1,6 @@
 # auth_system/views.py
 from django.contrib.auth import login, logout
+
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -84,17 +85,13 @@ class UserLoginView(APIView):
     serializer_class = UserLoginSerializer
 
     def post(self, request):
-        serializer = UserLoginSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = UserLoginSerializer(data=request.data, context={"request": request})
 
         # 验证失败记录日志
         if not serializer.is_valid():
             account = request.data.get("account", "未知账号")
             # 记录到数据库（LoginLog表）
-            record_login_log(
-                request, username=account, status="1", msg="账户或密码错误"
-            )
+            record_login_log(request, username=account, status="1", msg="账户或密码错误")
             # 记录到fail2ban日志文件（用于IP封禁）
             record_fail2ban_log(request, account=account)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -128,8 +125,7 @@ class UserLoginView(APIView):
             {
                 "code": 200,
                 "message": "登录成功！🎉 欢迎回到 Skillspace！",
-                "token": request.session.session_key
-                or "session_active",  # Session模式下Token非必须，但前端可能需要一个非空值
+                "token": request.session.session_key or "session_active",  # Session模式下Token非必须，但前端可能需要一个非空值
                 "user": UserSerializer(user).data,
                 "menuList": MenuSerializer(menu_tree, many=True).data,
                 "authorities": list(perms),
@@ -199,15 +195,11 @@ class PasswordChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = PasswordChangeSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         logout(request)
-        return Response(
-            {"message": "密码修改成功，请使用新密码重新登录"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "密码修改成功，请使用新密码重新登录"}, status=status.HTTP_200_OK)
 
 
 class CheckEmailView(APIView):
@@ -278,9 +270,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
         # 验证新密码
         if not new_password or len(new_password) < 6:
-            return Response(
-                {"detail": "密码至少需要6位字符"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "密码至少需要6位字符"}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(new_password)
         user.save()
@@ -331,9 +321,7 @@ class RoleManagementViewSet(viewsets.ModelViewSet):
         menu_ids = request.data.get("menu_ids", [])
         menus = Menu.objects.filter(id__in=menu_ids)
         role.menus.set(menus)
-        return Response(
-            {"message": "菜单权限分配成功", "role": RoleSerializer(role).data}
-        )
+        return Response({"message": "菜单权限分配成功", "role": RoleSerializer(role).data})
 
 
 class MenuManagementViewSet(viewsets.ModelViewSet):
@@ -541,9 +529,7 @@ class BannedIPViewSet(viewsets.ViewSet):
                             banned_ips.append(
                                 {
                                     "ip": ip,
-                                    "banned_at": datetime.now().strftime(
-                                        "%Y-%m-%d %H:%M:%S"
-                                    ),
+                                    "banned_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "status": "banned",
                                 }
                             )

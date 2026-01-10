@@ -51,9 +51,7 @@ def test_config_loading():
         for i, server in enumerate(servers, 1):
             print(f"\n  服务器 {i}:")
             print(f"    名称: {server['name']}")
-            print(
-                f"    地址: {server['connection']['host']}:{server['connection']['port']}"
-            )
+            print(f"    地址: {server['connection']['host']}:{server['connection']['port']}")
             print(f"    用户: {server['connection']['username']}")
             print(f"    认证: {server['connection']['auth_type']}")
             print(f"    标签: {', '.join(server.get('tags', []))}")
@@ -64,9 +62,7 @@ def test_config_loading():
             print(f"    监控服务数: {len(services)}")
             if services:
                 print(f"    服务列表: {', '.join([s['name'] for s in services])}")
-            print(
-                f"    Docker监控: {'启用' if monitoring.get('enable_docker') else '禁用'}"
-            )
+            print(f"    Docker监控: {'启用' if monitoring.get('enable_docker') else '禁用'}")
 
         return True, servers
 
@@ -156,9 +152,7 @@ def test_data_collection(server_config):
         cpu_info = collector.collect_cpu_info()
         print(f"   [OK] CPU使用率: {cpu_info.get('usage_percent')}%")
         print(f"   [OK] CPU核心数: {cpu_info.get('cores')}")
-        print(
-            f"   [OK] 负载平均: {cpu_info.get('load_avg_1')}, {cpu_info.get('load_avg_5')}, {cpu_info.get('load_avg_15')}"
-        )
+        print(f"   [OK] 负载平均: {cpu_info.get('load_avg_1')}, {cpu_info.get('load_avg_5')}, {cpu_info.get('load_avg_15')}")
 
         print("\n3. 采集内存信息...")
         memory_info = collector.collect_memory_info()
@@ -192,9 +186,7 @@ def test_data_collection(server_config):
             for service_config in services[:3]:  # 只测试前3个
                 service_data = collector.check_service(service_config)
                 status_icon = "[OK]" if service_data["status"] == "running" else "[X]"
-                print(
-                    f"   {status_icon} {service_data['name']}: {service_data['status']}"
-                )
+                print(f"   {status_icon} {service_data['name']}: {service_data['status']}")
 
         # 测试Docker容器
         if monitoring.get("enable_docker"):
