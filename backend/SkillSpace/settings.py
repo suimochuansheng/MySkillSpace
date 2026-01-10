@@ -16,17 +16,17 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv(".env")
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 加载 .env 文件（项目根目录，backend/ 的上一级）
+# settings.py 在 backend/SkillSpace/settings.py
+# 所以需要往上两级找到项目根目录
+PROJECT_ROOT = BASE_DIR.parent  # /home/huazhu/MySkillSpace
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
 # Add myapps directory to Python path
 sys.path.insert(0, os.path.join(BASE_DIR, "SkillSpace", "myapps"))
-
-# 假设 .env 文件在项目根目录（和 manage.py 同目录）
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 
 # 输出sys.path都有哪些路径
@@ -85,8 +85,9 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     # vite默认接口
     "http://localhost:5173",
-    # 备用端口
-    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5173",
+    # WSL2 IP 地址（172.26.x.x 段）
+    "http://172.26.206.220:5173",
 ]
 
 # 允许携带 Cookie (Session 认证必须)
@@ -104,6 +105,8 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # WSL2 IP 地址（172.26.x.x 段）
+    "http://172.26.206.220:5173",
 ]
 
 ROOT_URLCONF = "SkillSpace.urls"
@@ -129,18 +132,15 @@ WSGI_APPLICATION = "SkillSpace.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-if os.getenv("DB_NAME"):  # 如果配置了数据库名，使用 MySQL
+if os.getenv("DB_NAME"):  # 如果配置了数据库名，使用配置的数据库（PostgreSQL）
     DATABASES = {
         "default": {
-            "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.mysql"),
+            "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
             "NAME": os.getenv("DB_NAME", ""),
             "USER": os.getenv("DB_USER", ""),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "3306"),
-            "OPTIONS": {
-                "charset": "utf8mb4",
-            },
+            "PORT": os.getenv("DB_PORT", "5432"),
         }
     }
 else:  # CI 环境或未配置数据库，使用 SQLite
@@ -216,15 +216,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # ========== CELERY 配置 ==========
 # Celery Broker (使用 RabbitMQ)
-CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//"
-)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
 
 # ========== Result Backend 配置 ==========
 # 使用 Redis 存储任务结果
-CELERY_RESULT_BACKEND = os.getenv(
-    "CELERY_RESULT_BACKEND", "redis://:123456@localhost:6379/0"
-)
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://:123456@localhost:6379/0")
 
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
@@ -236,9 +232,7 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # ✅ 改为 1（重要！）
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 50  # ✅ 新增：每50个任务重启Worker
 
 # ========== 邮件配置（用于测试）==========
-EMAIL_BACKEND = (
-    "django.core.mail.backends.console.EmailBackend"  # 控制台打印邮件（安全！）
-)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # 控制台打印邮件（安全！）
 DEFAULT_FROM_EMAIL = "noreply@skillspace.local"  # 设置默认发件人
 
 
@@ -261,6 +255,7 @@ SIMPLEUI_VERSION = False
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  # 你的前端地址
     "http://127.0.0.1:5173",  # 可选，防止IP访问的情况
+    "http://172.26.206.220:5173",  # WSL2 IP 地址
 ]
 
 # ========== Django Channels 配置 ==========

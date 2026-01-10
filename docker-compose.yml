@@ -1,0 +1,108 @@
+
+# ==================== SkillSpace Docker Compose 配置 ====================
+# 架构：PostgreSQL + pgvector + Redis + RabbitMQ
+# 用途：业务数据库 + 向量存储 + 缓存 + 消息队列
+# ====================================================================
+
+services:
+  # ==================== 1. PostgreSQL 数据库 (业务数据 + 向量存储) ====================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: skillspace_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-skillspace}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_password}
+      # PostgreSQL 性能优化配置
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # 自动启用 pgvector 扩展
+      - ./backend/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    networks:
+      - skillspace_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 资源限制（开发环境可适当调整）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==================== 2. Redis 缓存 (缓存/会话/Channel Layer) ====================
+  redis:
+    image: redis:7.2-alpine
+    container_name: skillspace_redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-123456} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - skillspace_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # ==================== 3. RabbitMQ 消息队列 (Celery Broker) ====================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: skillspace_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin123}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"     # AMQP 端口
+      - "15672:15672"   # 管理界面端口
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - skillspace_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+# ==================== 数据卷定义 ====================
+volumes:
+  postgres_data:
+    driver: local
+    name: skillspace_postgres_data
+  redis_data:
+    driver: local
+    name: skillspace_redis_data
+  rabbitmq_data:
+    driver: local
+    name: skillspace_rabbitmq_data
+
+# ==================== 网络定义 ====================
+networks:
+  skillspace_net:
+    driver: bridge
+    name: skillspace_network
